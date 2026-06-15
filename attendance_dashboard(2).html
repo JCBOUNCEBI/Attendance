@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JCB Attendance Dashboard</title>
+<style>
+  :root {
+    --green:#00A86B; --green-dark:#007a4d; --green-light:#e6f7f1;
+    --blue:#1a5fa8; --blue-light:#e8f0fb;
+    --amber:#f59e0b; --amber-light:#fef3c7;
+    --red:#ef4444; --red-light:#fee2e2;
+    --yellow:#fbbf24; --yellow-light:#fef9c3;
+    --purple:#7c3aed; --purple-light:#ede9fe;
+    --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+    --gray-300:#d1d5db; --gray-400:#9ca3af; --gray-500:#6b7280;
+    --gray-600:#4b5563; --gray-700:#374151; --gray-800:#1f2937;
+    --white:#fff; --radius:10px;
+    --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md:0 4px 16px rgba(0,0,0,0.09);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gray-50);color:var(--gray-800);font-size:14px;line-height:1.5}
+
+  /* ── Header ── */
+  .header{background:var(--white);border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+  .brand-text .t1{font-size:14px;font-weight:600;color:var(--gray-800)}
+  .brand-text .t2{font-size:11px;color:var(--gray-400)}
+  .header-actions{display:flex;align-items:center;gap:8px}
+
+  /* emp status pill */
+  #emp-pill{font-size:11px;padding:4px 10px;border-radius:99px;font-weight:600;border:1px solid var(--gray-200);color:var(--gray-500);background:var(--gray-100);white-space:nowrap;cursor:default}
+  #emp-pill.loading{background:#fff8e1;border-color:#fbbf24;color:#92400e}
+  #emp-pill.ok{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  #emp-pill.error{background:var(--red-light);border-color:#fca5a5;color:#991b1b;cursor:pointer}
+  #emp-pill.error:hover{background:#fecaca}
+
+  .hbtn{border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+  #load-emp-btn{background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd}
+  #load-emp-btn:hover{background:#ddd6fe}
+  #load-emp-btn:disabled{opacity:.5;cursor:not-allowed}
+  #fetch-btn{background:var(--green);color:#fff}
+  #fetch-btn:hover{background:var(--green-dark)}
+  #fetch-btn:disabled{background:var(--gray-300);cursor:not-allowed}
+
+  /* ── Controls bar ── */
+  .controls-bar{background:var(--white);border-bottom:1px solid var(--gray-200);padding:12px 24px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .cg{display:flex;flex-direction:column;gap:3px}
+  .cg label{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.6px}
+  .quick-btns{display:flex;gap:3px;flex-wrap:wrap}
+  .qbtn{background:var(--gray-100);border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:500;color:var(--gray-600);cursor:pointer;transition:all .12s;white-space:nowrap}
+  .qbtn:hover{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  .qbtn.active{background:var(--green);border-color:var(--green);color:#fff}
+  input[type=date],input[type=text],select{border:1px solid var(--gray-200);border-radius:7px;padding:5px 9px;font-size:12px;color:var(--gray-800);background:var(--white);outline:none;height:32px;transition:border .12s}
+  input[type=date]:focus,input[type=text]:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  .dr-wrap{display:flex;align-items:center;gap:5px}
+  .dr-wrap span{font-size:11px;color:var(--gray-400)}
+  #search-emp{width:180px}
+  #center-select-ctrl{width:190px}
+  .controls-divider{width:1px;height:32px;background:var(--gray-200);margin:0 4px;align-self:flex-end}
+
+  /* ── Progress ── */
+  #prog-wrap{display:none;background:var(--white);border-bottom:1px solid var(--gray-200);padding:8px 24px}
+  #prog-wrap.on{display:block}
+  .prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:5px}
+  .prog-bg{height:4px;background:var(--gray-200);border-radius:99px;overflow:hidden}
+  .prog-fill{height:100%;background:var(--green);border-radius:99px;transition:width .3s ease;width:0}
+
+  /* ── Error/info banners ── */
+  .banner{border-radius:8px;padding:9px 14px;font-size:12px;margin:0 24px;display:none}
+  .banner.on{display:block;margin-bottom:10px}
+  .banner.err{background:var(--red-light);color:#7f1d1d;border:1px solid #fca5a5}
+  .banner.info{background:var(--amber-light);color:#92400e;border:1px solid #fcd34d}
+
+  /* ── Stats ── */
+  .main{padding:18px 24px;flex:1}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+  .sc{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+  .sc.c-green::before{background:var(--green)}
+  .sc.c-red::before{background:var(--red)}
+  .sc.c-yellow::before{background:var(--yellow)}
+  .sc.c-amber::before{background:var(--amber)}
+  .sc.c-blue::before{background:var(--blue)}
+  .sc.c-gray::before{background:var(--gray-400)}
+  .sico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:8px}
+  .sc.c-green .sico{background:var(--green-light)}
+  .sc.c-red .sico{background:var(--red-light)}
+  .sc.c-yellow .sico{background:var(--yellow-light)}
+  .sc.c-amber .sico{background:var(--amber-light)}
+  .sc.c-blue .sico{background:var(--blue-light)}
+  .sc.c-gray .sico{background:var(--gray-100)}
+  .sval{font-size:24px;font-weight:700;color:var(--gray-800);line-height:1;margin-bottom:3px}
+  .slbl{font-size:11px;color:var(--gray-500);font-weight:500}
+
+  /* ── Table card ── */
+  .tcard{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .thead-bar{padding:12px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .thead-bar h3{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .thead-right{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .rec-count{font-size:11px;color:var(--gray-500);background:var(--gray-100);padding:3px 9px;border-radius:99px;white-space:nowrap}
+  select.tf{font-size:11px;height:28px;padding:3px 7px}
+  .twrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead tr{background:var(--gray-50);border-bottom:2px solid var(--gray-200)}
+  th{text-align:left;padding:9px 11px;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;cursor:pointer;user-select:none}
+  th:hover{color:var(--gray-700)}
+  th .sort-arrow{margin-left:3px;opacity:.4;font-size:9px}
+  th.sorted .sort-arrow{opacity:1;color:var(--green)}
+  tbody tr{border-bottom:1px solid var(--gray-100);transition:background .1s}
+  tbody tr:hover{background:#f9fafb}
+  tbody tr:last-child{border-bottom:none}
+  td{padding:8px 11px;color:var(--gray-700);white-space:nowrap}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+  .b-ok{background:var(--green-light);color:#065f46}
+  .b-lt{background:var(--yellow-light);color:#92400e}
+  .b-lw{background:var(--red-light);color:#991b1b}
+  .b-ab{background:#fee2e2;color:#7f1d1d}
+  .cc{display:inline-block;background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
+  .empty-s{text-align:center;padding:50px 20px;color:var(--gray-400)}
+  .empty-s .eico{font-size:36px;margin-bottom:10px}
+  .empty-s h4{font-size:14px;color:var(--gray-600);margin-bottom:5px}
+  .empty-s p{font-size:12px}
+  #dl-btn{background:var(--white);border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--gray-600);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .12s}
+  #dl-btn:hover{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+
+  /* ── Pagination ── */
+  .pgn{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--gray-200);flex-wrap:wrap;gap:6px}
+  .pgn-info{font-size:11px;color:var(--gray-500)}
+  .pgn-btns{display:flex;gap:3px}
+  .pb{border:1px solid var(--gray-200);background:var(--white);border-radius:5px;padding:3px 9px;font-size:11px;color:var(--gray-600);cursor:pointer;transition:all .12s}
+  .pb:hover,.pb.act{background:var(--green);border-color:var(--green);color:#fff}
+  .pb:disabled{opacity:.4;cursor:not-allowed}
+  .app{display:flex;flex-direction:column;min-height:calc(100vh - 56px)}
+
+  /* ── Paste Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center}
+  .modal-overlay.on{display:flex}
+  .modal{background:var(--white);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.18);width:560px;max-width:95vw;overflow:hidden}
+  .modal-head{padding:18px 20px 14px;border-bottom:1px solid var(--gray-200);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-head h2{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:3px}
+  .modal-head p{font-size:12px;color:var(--gray-500);line-height:1.5}
+  .modal-close{background:var(--gray-100);border:none;border-radius:6px;width:28px;height:28px;font-size:16px;cursor:pointer;color:var(--gray-500);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .modal-close:hover{background:var(--gray-200)}
+  .modal-body{padding:16px 20px}
+  .step-row{display:flex;gap:10px;margin-bottom:14px;align-items:flex-start}
+  .step-num{width:22px;height:22px;border-radius:99px;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .step-text{font-size:12px;color:var(--gray-600);line-height:1.6}
+  .step-text strong{color:var(--gray-800)}
+  .step-text code{background:var(--gray-100);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--green-dark)}
+  #paste-area{width:100%;height:110px;border:2px dashed var(--gray-200);border-radius:8px;padding:10px;font-size:12px;font-family:monospace;color:var(--gray-700);resize:vertical;outline:none;transition:border .15s}
+  #paste-area:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  #paste-area::placeholder{color:var(--gray-400)}
+  .modal-footer{padding:12px 20px;border-top:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .modal-footer .hint{font-size:11px;color:var(--gray-400)}
+  .mbtn{border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+  .mbtn-cancel{background:var(--gray-100);color:var(--gray-600)}
+  .mbtn-cancel:hover{background:var(--gray-200)}
+  .mbtn-load{background:var(--green);color:#fff}
+  .mbtn-load:hover{background:var(--green-dark)}
+  #paste-result{font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;display:none}
+  #paste-result.ok{display:block;background:var(--green-light);color:#065f46;border:1px solid #a7f3d0}
+  #paste-result.err{display:block;background:var(--red-light);color:#991b1b;border:1px solid #fca5a5}
+  /* ── Employee Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center}
+  .modal-overlay.on{display:flex}
+  .modal{background:#fff;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.18);width:580px;max-width:96vw;max-height:90vh;overflow-y:auto}
+  .mhead{padding:20px 22px 16px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .mhead-text h2{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:3px}
+  .mhead-text p{font-size:12px;color:var(--gray-500);line-height:1.5}
+  .mclose{background:var(--gray-100);border:none;border-radius:6px;width:28px;height:28px;font-size:15px;cursor:pointer;color:var(--gray-500);flex-shrink:0}
+  .mclose:hover{background:var(--gray-200)}
+  .mbody{padding:18px 22px}
+  .mtabs{display:flex;gap:2px;background:var(--gray-100);border-radius:8px;padding:3px;margin-bottom:18px}
+  .mtab{flex:1;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--gray-500);background:transparent;transition:all .15s}
+  .mtab.active{background:#fff;color:var(--gray-800);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+  .mtab-panel{display:none}
+  .mtab-panel.active{display:block}
+  .step{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
+  .stepn{width:20px;height:20px;border-radius:99px;background:var(--green);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  .stept{font-size:12px;color:var(--gray-600);line-height:1.6}
+  .stept strong{color:var(--gray-800)}
+  .stept code{background:var(--gray-100);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--green-dark);font-family:monospace}
+  .code-block{background:var(--gray-800);color:#a5f3c4;border-radius:8px;padding:12px 14px;font-size:11px;font-family:monospace;line-height:1.8;margin:10px 0;white-space:pre-wrap;word-break:break-all}
+  textarea#paste-area{width:100%;height:100px;border:2px dashed var(--gray-200);border-radius:8px;padding:10px;font-size:12px;font-family:monospace;resize:vertical;outline:none;transition:border .15s}
+  textarea#paste-area:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  textarea#paste-area::placeholder{color:var(--gray-400)}
+  input.url-input{width:100%;border:1px solid var(--gray-200);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:monospace}
+  input.url-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  .paste-result{font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;display:none}
+  .paste-result.ok{display:block;background:var(--green-light);color:#065f46;border:1px solid #a7f3d0}
+  .paste-result.err{display:block;background:var(--red-light);color:#991b1b;border:1px solid #fca5a5}
+  .mfoot{padding:12px 22px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:8px}
+  .mbtn{border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+  .mbtn-cancel{background:var(--gray-100);color:var(--gray-600)}
+  .mbtn-cancel:hover{background:var(--gray-200)}
+  .mbtn-ok{background:var(--green);color:#fff}
+  .mbtn-ok:hover{background:var(--green-dark)}
+  .saved-tag{display:none;font-size:11px;color:var(--green-dark);font-weight:600;background:var(--green-light);padding:3px 8px;border-radius:99px}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand">
+    <div class="logo">JCB</div>
+    <div class="brand-text">
+      <div class="t1">Attendance Dashboard</div>
+      <div class="t2">Zenoti · Real-time</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span id="emp-pill">👤 Loading employees…</span>
+    <button class="hbtn" id="load-emp-btn" onclick="loadEmployeesFromSheet()" title="Re-fetch employee list from Google Sheet">🔄 Reload Employees</button>
+    <button class="hbtn" id="fetch-btn" onclick="fetchAttendance()">⬇ Fetch Attendance</button>
+  </div>
+</div>
+
+<!-- Controls bar -->
+<div class="controls-bar">
+
+  <div class="cg">
+    <label>Quick Select</label>
+    <div class="quick-btns">
+      <button class="qbtn" onclick="setQuick('today',this)">Today</button>
+      <button class="qbtn" onclick="setQuick('yesterday',this)">Yesterday</button>
+      <button class="qbtn" onclick="setQuick('week',this)">Last 7 Days</button>
+      <button class="qbtn active" onclick="setQuick('month',this)">This Month</button>
+      <button class="qbtn" onclick="setQuick('lastmonth',this)">Last Month</button>
+      <button class="qbtn" onclick="setQuick('quarter',this)">This Quarter</button>
+    </div>
+  </div>
+
+  <div class="cg">
+    <label>Date Range <span style="font-weight:400;text-transform:none">(max 90 days)</span></label>
+    <div class="dr-wrap">
+      <input type="date" id="start-date"/>
+      <span>→</span>
+      <input type="date" id="end-date"/>
+    </div>
+  </div>
+
+  <div class="controls-divider"></div>
+
+  <div class="cg">
+    <label>Fetch by Center</label>
+    <select id="center-select-ctrl">
+      <option value="">All Centers</option>
+    </select>
+  </div>
+
+  <div class="controls-divider"></div>
+
+  <div class="cg">
+    <label>Search Employee</label>
+    <input type="text" id="search-emp" placeholder="Code or name…" oninput="applyFilters()"/>
+  </div>
+
+</div>
+
+<!-- Progress -->
+<div id="prog-wrap">
+  <div class="prog-row">
+    <span id="prog-text">Fetching…</span>
+    <span id="prog-pct">0%</span>
+  </div>
+  <div class="prog-bg"><div class="prog-fill" id="prog-fill"></div></div>
+</div>
+
+<div class="banner err" id="err-banner"></div>
+
+<div class="app">
+  <div class="main">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="sc c-green"><div class="sico">✅</div><div class="sval" id="s-present">—</div><div class="slbl">Present (Full Day)</div></div>
+      <div class="sc c-red"><div class="sico">❌</div><div class="sval" id="s-absent">—</div><div class="slbl">No Attendance</div></div>
+      <div class="sc c-amber" style="--amber:#f97316"><div class="sico">🚪</div><div class="sval" id="s-nocheckout">—</div><div class="slbl">No Checkout</div></div>
+      <div class="sc c-yellow"><div class="sico">⏱</div><div class="sval" id="s-less">—</div><div class="slbl">Less Working Hrs</div></div>
+      <div class="sc c-amber"><div class="sico">⚠️</div><div class="sval" id="s-late">—</div><div class="slbl">Less than 8:45</div></div>
+      <div class="sc c-blue"><div class="sico">👤</div><div class="sval" id="s-emps">—</div><div class="slbl">Unique Employees</div></div>
+      <div class="sc c-gray"><div class="sico">📋</div><div class="sval" id="s-total">—</div><div class="slbl">Total Records</div></div>
+    </div>
+
+    <!-- Table -->
+    <div class="tcard">
+      <div class="thead-bar">
+        <h3>Attendance Records</h3>
+        <div class="thead-right">
+          <select class="tf" id="f-brand" onchange="applyFilters()">
+            <option value="">All Brands</option>
+            <option value="JCB">JCB</option>
+            <option value="Bounce">Bounce</option>
+          </select>
+          <select class="tf" id="f-center" onchange="applyFilters()"><option value="">All Centers</option></select>
+          <select class="tf" id="f-status" onchange="applyFilters()">
+            <option value="">All Status</option>
+            <option value="ok">✅ Full Day</option>
+            <option value="No Checkout">🚪 No Checkout</option>
+            <option value="Less than 8:45">⚠ Less than 8:45</option>
+            <option value="Less working hours">⏱ Less working hours</option>
+            <option value="No Attendance">❌ No Attendance</option>
+          </select>
+          <span class="rec-count" id="rec-count">0 records</span>
+          <button id="dl-btn" onclick="downloadCSV()">⬇ CSV</button>
+        </div>
+      </div>
+      <div class="banner info" id="info-banner"></div>
+      <div class="twrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('brand')">Brand <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('centerCode')">Center Code <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('centerName')">Center Name <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('employeeCode')">Emp Code <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('employeeName')">Employee Name <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('jobTitle')">Job Title <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('month')">Month <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('date')">Date <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('day')">Day <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('checkin')">Check In <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('checkout')">Check Out <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('workMinutes')">Working Hrs <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('status')">Status <span class="sort-arrow">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="12"><div class="empty-s">
+              <div class="eico">📅</div>
+              <h4>No data yet</h4>
+              <p>Select a date range and click <strong>Fetch Attendance</strong></p>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pgn" id="pgn" style="display:none">
+        <div class="pgn-info" id="pgn-info"></div>
+        <div class="pgn-btns" id="pgn-btns"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="emp-modal" onclick="if(event.target===this)closeEmpModal()">
+  <div class="modal">
+    <div class="mhead">
+      <div class="mhead-text">
+        <h2>👥 Load Employee Data</h2>
+        <p>Employee names can't be fetched directly from a local HTML file due to browser security.<br>Choose one of the two options below.</p>
+      </div>
+      <button class="mclose" onclick="closeEmpModal()">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="mtabs">
+        <button class="mtab active" onclick="switchTab('paste',this)">📋 Option 1 — Paste from Sheet</button>
+        <button class="mtab" onclick="switchTab('script',this)">⚡ Option 2 — Apps Script (one-time setup)</button>
+      </div>
+
+      <!-- Tab 1: Paste -->
+      <div class="mtab-panel active" id="tab-paste">
+        <div class="step"><div class="stepn">1</div><div class="stept">Open your Google Sheet → go to the <strong>Employees</strong> tab → press <code>Ctrl+A</code> then <code>Ctrl+C</code></div></div>
+        <div class="step"><div class="stepn">2</div><div class="stept">Click the box below and press <code>Ctrl+V</code> to paste, then click <strong>Load</strong></div></div>
+        <textarea id="paste-area" placeholder="Paste your Employees sheet data here (Ctrl+V)…"></textarea>
+        <div class="paste-result" id="paste-result"></div>
+      </div>
+
+      <!-- Tab 2: Apps Script -->
+      <div class="mtab-panel" id="tab-script">
+        <div class="step"><div class="stepn">1</div><div class="stept">In your Google Sheet, go to <strong>Extensions → Apps Script</strong> and create a new script called <strong>CorsProxy</strong></div></div>
+        <div class="step"><div class="stepn">2</div><div class="stept">Paste this code and click <strong>Deploy → New deployment → Web App → Anyone → Deploy</strong></div></div>
+        <div class="code-block">function doGet(e) {
+  const id = '1S10jojUGnglMcxLtIwrKiNJe0ftW_IHPZA2vwEFPx-s';
+  const sheet = SpreadsheetApp.openById(id).getSheetByName('Employees');
+  const data = sheet.getDataRange().getValues();
+  const csv = data.map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const output = ContentService.createTextOutput(csv);
+  output.setMimeType(ContentService.MimeType.TEXT);
+  return output;
+}</div>
+        <div class="step"><div class="stepn">3</div><div class="stept">Copy the deployment URL and paste it below — it's saved in your browser for next time</div></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <input class="url-input" id="apps-script-url-input" placeholder="https://script.google.com/macros/s/…/exec" value=""/>
+          <button class="mbtn mbtn-ok" onclick="saveAppsScriptUrl()" style="white-space:nowrap">💾 Save URL</button>
+          <span class="saved-tag" id="script-url-saved">✓ Saved!</span>
+        </div>
+        <p style="font-size:11px;color:var(--gray-400);margin-top:8px">Once saved, click <strong>🔄 Reload Employees</strong> in the header — it will auto-fetch every time.</p>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="mbtn mbtn-cancel" onclick="closeEmpModal()">Close</button>
+      <button class="mbtn mbtn-ok" id="paste-load-btn" onclick="processPaste()">✓ Load from Paste</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Account 1: JCB ──
+const ACCT1 = {
+  url:  "https://jcb.zenoti.com/api/v100/services/integration/attendance.aspx",
+  user: "api_attendance",
+  pass: "zenoti@support",
+  acct: "jcb",
+  brand: "JCB"
+};
+
+// ── Account 2: Bounce (api key: 05c61d9006744f0090578a911941497e4afa684d9f454fb19d4449b27f49cd81) ──
+const ACCT2 = {
+  url:  "https://bounce.zenoti.com/api/v100/services/integration/attendance.aspx",
+  user: "api_attendance",
+  pass: "zenoti@support",
+  acct: "bounce",
+  brand: "Bounce",
+  apiKey: "05c61d9006744f0090578a911941497e4afa684d9f454fb19d4449b27f49cd81"
+};
+
+const EMP_BASE = "https://api.zenoti.com/v1/centers"; // kept for reference
+const CHUNK    = 6;
+const PG_SIZE  = 100;
+
+// ── Centers master — Account 1 (JCB) ──
+const CENTERS_JCB = [
+  {id:"e29d48ff-bd25-4ecd-9989-56d3077f1ac0",name:"Lokhandwala",code:"LKW",brand:"JCB"},
+  {id:"304d772a-0708-4a01-b278-a561d6c50ddc",name:"Lavelle Road",code:"BLO",brand:"JCB"},
+  {id:"a20c0010-1cf5-4d20-9586-1a155aa715ea",name:"Juhu",code:"JUH",brand:"JCB"},
+  {id:"2e5b34a4-9868-4913-8326-9a7d0b980d0d",name:"Rcity",code:"GTK",brand:"JCB"},
+  {id:"3cc123c2-a27b-4ab1-987f-29b3558485c2",name:"Warehouse - FRIN",code:"WHF",brand:"JCB"},
+  {id:"68184834-108d-44a3-97e0-1f71ffc96787",name:"Warehouse - JCB",code:"NTC",brand:"JCB"},
+  {id:"548af654-4a3d-423a-a859-11b4165b07d3",name:"Palladium",code:"LP",brand:"JCB"},
+  {id:"97bd7019-13c7-472d-b038-3662374d5a0f",name:"Kemps Corner",code:"KC",brand:"JCB"},
+  {id:"125fa141-3e4d-487d-b3e1-1769ed7bbaa6",name:"Bandra Pali",code:"BDR",brand:"JCB"},
+  {id:"b830b761-052b-4d12-98e5-da594233ef6d",name:"Khar West",code:"KHR",brand:"JCB"},
+  {id:"f7f8838a-714c-4722-8da4-8cca463bc94b",name:"Head Office",code:"HO",brand:"JCB"},
+  {id:"73fc3507-269c-479b-8b5b-1f6e7b7b246f",name:"Indiranagar",code:"BIN",brand:"JCB"},
+  {id:"8bdfd60d-2f3a-4062-9147-3a7353660d0c",name:"Koramangala",code:"BKM",brand:"JCB"},
+  {id:"d8d4dcbb-5b1e-447d-9ce2-f630c29e8b97",name:"Powai",code:"POW",brand:"JCB"},
+  {id:"836fc9a2-3d1e-4437-a637-fa77b079b87d",name:"Academy",code:"ACA",brand:"JCB"},
+  {id:"5f888e28-4e82-4433-bf8b-c0f6c3979569",name:"Prabhadevi",code:"PDM",brand:"JCB"},
+  {id:"42ea0a56-2cad-4f64-90b3-ff431b621fa6",name:"Bangalore JCB WH",code:"BJWH",brand:"JCB"},
+  {id:"119b4fe0-f0f4-4ec1-80b5-51e63892d208",name:"Bangalore FRIN WH",code:"BFWH",brand:"JCB"},
+  {id:"5b8c2a42-0a7d-4212-9855-f13dabc14693",name:"Chembur",code:"CHM",brand:"JCB"},
+  {id:"2f110944-8928-496d-9045-098e601ab163",name:"Kamala Mills",code:"KML",brand:"JCB"},
+  {id:"43bfbc9f-42b6-43fd-934a-f588eb19b51d",name:"Kandivali",code:"KDV",brand:"JCB"},
+  {id:"4361b1a7-7f4d-4b4f-9772-e176f3885ab3",name:"Aundh",code:"AUN",brand:"JCB"},
+  {id:"77264163-e4e1-4366-b828-b83efeb8709d",name:"Bandra-Kurla Complex",code:"BKC",brand:"JCB"},
+  {id:"d086a2ec-3bbb-472c-90c2-b3d00161e8f4",name:"JCB Bhopal",code:"BHO",brand:"JCB"},
+  {id:"f2ed6b3e-378b-4ab2-a015-d551b0be3cbc",name:"Kopa",code:"KOPA",brand:"JCB"},
+  {id:"4e16cfdb-24f4-46c2-a56b-8f7ffe54ff19",name:"Wakad",code:"WAK",brand:"JCB"},
+  {id:"edec7ad0-1769-4149-817d-49113c65e4a2",name:"Oberoi Mall",code:"OBR",brand:"JCB"},
+  {id:"174bba2e-e4b4-4c99-93ca-5acb21ebf2cc",name:"GC Trf Control",code:"GCTC",brand:"JCB"}
+];
+
+// ── Centers master — Account 2 (Bounce) ──
+const CENTERS_BOUNCE = [
+  {id:"e7d258db-e872-450a-9a80-8579d3849037",name:"Bounce Lavelle Road",code:"BLAVR",brand:"Bounce"},
+  {id:"616c38a4-dfa5-4700-92d2-dd12bbfc500a",name:"Bounce Koramangala",code:"BK",brand:"Bounce"},
+  {id:"5a78757c-88a7-47d2-838f-06d90c552a3a",name:"Bounce Indira Nagar",code:"ING",brand:"Bounce"},
+  {id:"1e48d988-9afe-412a-bf1a-df3b114078fb",name:"Bounce Kamanahalli",code:"KMNH",brand:"Bounce"},
+  {id:"29cea180-138e-4f4d-b774-b4280deb2d8b",name:"Bounce JP Nagar",code:"JPN",brand:"Bounce"},
+  {id:"7c5fa97d-2fcb-47c9-8f88-149fefa5bca5",name:"Bounce New Bel Road",code:"BEL",brand:"Bounce"},
+  {id:"1eb35880-b21b-4522-a959-2531f5ce26a8",name:"Oryza Lavelle Road",code:"OLLR",brand:"Bounce"},
+  {id:"d6060e84-a08c-4644-b0b3-dfb75fd20fe2",name:"Kanya R.K.Salai",code:"KRKS",brand:"Bounce"},
+  {id:"6145b4cf-5a1c-4212-b14f-d4dfc6a9c9dd",name:"Bounce Whitefield",code:"WHF",brand:"Bounce"},
+  {id:"963eef88-6662-4cca-8ec8-14789e65305b",name:"Inventory Chennai",code:"INC",brand:"Bounce"},
+  {id:"a27103b6-1766-42b8-8b96-e054ed5e5440",name:"Inventory Bangalore",code:"INB",brand:"Bounce"},
+  {id:"db1ef2f1-d055-4e40-8abb-ef652130c3a1",name:"Inventory Spalon",code:"ISP",brand:"Bounce"},
+  {id:"4fb847f8-254b-4823-b04b-c6dfdf296749",name:"Bounce Adyar",code:"AD",brand:"Bounce"},
+  {id:"4fb053f4-bb9f-4ac8-88dc-717ab28b0c6a",name:"Bounce Inorbit Mall",code:"BIM",brand:"Bounce"},
+  {id:"311c059c-9d86-40a5-b425-6263bf4451bc",name:"Bounce Sahakarnagar",code:"SHK",brand:"Bounce"},
+  {id:"12e097db-ecad-48f7-b5b2-1ba0425dfa2a",name:"Bounce Banjara Hills",code:"BNJ",brand:"Bounce"},
+  {id:"90d25319-bccb-4604-9604-5afe6787e9c6",name:"Bounce VR Mall Bengaluru",code:"BVRMB",brand:"Bounce"},
+  {id:"2397e646-7dc4-4f93-aa1d-c2ae9b169589",name:"Bounce HSR",code:"BHSR",brand:"Bounce"},
+  {id:"f6895531-d884-4d0c-921a-17c721b7a86f",name:"Bounce Electronic City",code:"BELC",brand:"Bounce"},
+  {id:"8ee73181-1787-4f6f-97c2-2840529bc961",name:"Bounce OMR",code:"BOMR",brand:"Bounce"},
+  {id:"0a12d3f4-728f-4586-a74f-9f75b55877fd",name:"Bounce Sarjapur",code:"BSJPR",brand:"Bounce"},
+  {id:"cce40458-950b-47f5-a354-892a6093ed33",name:"Bounce Marathahalli",code:"BMARATHA",brand:"Bounce"},
+  {id:"ff7de819-3e8b-4493-aed6-2e1453da30ef",name:"Bounce Ashoknagar",code:"BAK",brand:"Bounce"},
+  {id:"dd241b82-f023-4e69-8a2b-a2360915c780",name:"Bounce Falcon City",code:"BFC",brand:"Bounce"},
+  {id:"e9915c95-f0ce-474e-8d3c-e00f1b807e93",name:"Bounce ECR",code:"CBECR006",brand:"Bounce"},
+  {id:"e4dd22e2-9e60-4747-a84d-4531d8f87222",name:"Oryza St.Mary's Road",code:"CORS008",brand:"Bounce"},
+  {id:"f4d86c1d-866a-426c-bebd-1d2949c78cc8",name:"Bounce Ispahani",code:"CBI005",brand:"Bounce"},
+  {id:"25134ee1-f177-47e3-9174-967d6bf3d68b",name:"Training",code:"TNT",brand:"Bounce"},
+  {id:"6df1d9f3-3726-4df7-b6b1-4baee6fc9948",name:"Bounce KNK",code:"BKNK",brand:"Bounce"},
+  {id:"f19c9193-3cfb-4e7a-abfb-19c7959df0ae",name:"Bounce Annanagar",code:"BAN",brand:"Bounce"}
+];
+
+// ── Combined centers list ──
+const CENTERS = [...CENTERS_JCB, ...CENTERS_BOUNCE];
+
+// Populate "Fetch by Center" dropdown in controls bar
+const ctrlSel = document.getElementById('center-select-ctrl');
+
+// Add "Both Brands" option first
+const bothOpt = document.createElement('option');
+bothOpt.value = '__ALL__';
+bothOpt.textContent = '🔀 Both Brands (All Centers)';
+ctrlSel.appendChild(bothOpt);
+
+// JCB group
+const grpJCB = document.createElement('optgroup');
+grpJCB.label = '── JCB Brand ──';
+ctrlSel.appendChild(grpJCB);
+CENTERS_JCB.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c.id;
+  o.dataset.code = c.code;
+  o.dataset.brand = 'JCB';
+  o.textContent = c.code + ' — ' + c.name;
+  grpJCB.appendChild(o);
+});
+
+// Bounce group
+const grpBounce = document.createElement('optgroup');
+grpBounce.label = '── Bounce Brand ──';
+ctrlSel.appendChild(grpBounce);
+CENTERS_BOUNCE.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c.id;
+  o.dataset.code = c.code;
+  o.dataset.brand = 'Bounce';
+  o.textContent = c.code + ' — ' + c.name;
+  grpBounce.appendChild(o);
+});
+
+// ── State ──
+let employeeMap  = {};   // empCode → {name, title}
+let empLoaded    = false;
+let allData      = [];   // all fetched + processed rows (accumulates)
+let filteredData = [];
+let currentPage  = 1;
+let sortCol      = 'date';
+let sortDir      = -1;   // -1 = desc, 1 = asc
+
+// ── Helpers ──
+const fmt    = d => { const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; };
+const addD   = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+const diffD  = (a,b) => Math.round((b-a)/86400000);
+const pDate  = s => new Date(s+"T00:00:00");
+const sleep  = ms => new Promise(r=>setTimeout(r,ms));
+const esc    = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+
+const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ── Load Employees ──
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzYOLfHYafPc98vHzzp1jM20NKs3VCpHFKQrmfBMhH7ARLVSjL2rrNPAEjWj-t2naPxkg/exec";
+
+async function loadEmployeesFromSheet() {
+  const btn = document.getElementById('load-emp-btn');
+  btn.disabled = true;
+  setEmpPill('loading', '⏳ Loading employees…');
+  employeeMap = {};
+
+  try {
+    // Apps Script web apps always respond with Access-Control-Allow-Origin: *
+    // so this works from local files too
+    const resp = await fetch(APPS_SCRIPT_URL, { redirect: 'follow' });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const csv = await resp.text();
+    const loaded = parseEmployeeCSV(csv);
+    if (loaded === 0) throw new Error("0 records");
+    finalizeEmpLoad(loaded, 'Apps Script');
+  } catch(err) {
+    console.warn("Apps Script failed:", err);
+    setEmpPill('error', '⚠ Failed — click to load manually');
+  }
+  btn.disabled = false;
+}
+
+function finalizeEmpLoad(loaded, source) {
+  setEmpPill('ok', `👤 ${loaded.toLocaleString()} employees`);
+  empLoaded = true;
+  if (allData.length) {
+    allData.forEach(r => {
+      const e = employeeMap[r.employeeCode] || {};
+      r.employeeName = e.name  || r.employeeName || '';
+      r.jobTitle     = e.title || r.jobTitle     || '';
+    });
+    applyFilters();
+  }
+  showInfo(`👤 ${loaded.toLocaleString()} employees loaded via ${source}`, 4000);
+}
+
+// ── Paste fallback modal ──
+function openEmpModal() {
+  document.getElementById('emp-modal').classList.add('on');
+  document.getElementById('paste-area').value = '';
+  document.getElementById('paste-result').className = 'paste-result';
+  document.getElementById('paste-result').textContent = '';
+}
+function closeEmpModal() { document.getElementById('emp-modal').classList.remove('on'); }
+
+function processPaste() {
+  const raw = document.getElementById('paste-area').value.trim();
+  const res = document.getElementById('paste-result');
+  if (!raw) { res.className='paste-result err'; res.textContent='Nothing pasted. Copy all rows from your Employees sheet (Ctrl+A → Ctrl+C) then paste here.'; return; }
+  const lines = raw.split('\n').map(l => l.split('\t'));
+  if (lines.length < 2) { res.className='paste-result err'; res.textContent='Could not parse. Make sure you copied from Google Sheets.'; return; }
+  const header = lines[0].map(h => h.trim().toLowerCase());
+  const ci = {
+    code:  header.findIndex(h => h.includes('employee code')),
+    name:  header.findIndex(h => h.includes('full name')),
+    fname: header.findIndex(h => h.includes('first name')),
+    lname: header.findIndex(h => h.includes('last name')),
+    title: header.findIndex(h => h.includes('job title')),
+  };
+  if (ci.code < 0) { ci.code=4; ci.name=7; ci.fname=5; ci.lname=6; ci.title=9; }
+  employeeMap = {};
+  let loaded = 0;
+  lines.slice(1).forEach(cols => {
+    const code = (cols[ci.code]||'').trim();
+    if (!code || code.toLowerCase()==='employee code') return;
+    const name = ((ci.name>=0?cols[ci.name]||'':'')||[cols[ci.fname]||'',cols[ci.lname]||''].join(' ')).trim();
+    const title = (ci.title>=0?cols[ci.title]||'':'').trim();
+    if (!employeeMap[code]) { employeeMap[code]={name,title}; loaded++; }
+  });
+  if (loaded===0) { res.className='paste-result err'; res.textContent='No employee codes found. Include the header row.'; return; }
+  res.className='paste-result ok';
+  res.textContent=`✓ ${loaded.toLocaleString()} employees loaded!`;
+  finalizeEmpLoad(loaded, 'pasted data');
+  setTimeout(closeEmpModal, 1400);
+}
+
+function saveAppsScriptUrl() {} // no-op, kept for HTML onclick refs
+
+function parseEmployeeCSV(csv) {
+  // Column positions from sheet (0-indexed):
+  // A=0 Center Name, B=1 Center Code, C=2 Center ID, D=3 Employee ID,
+  // E=4 Employee Code, F=5 First Name, G=6 Last Name, H=7 Full Name,
+  // I=8 Gender, J=9 Job Title
+
+  function parseCSVLine(line) {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ) {
+        cols.push(cur.trim()); cur = '';
+      } else cur += ch;
+    }
+    cols.push(cur.trim());
+    return cols.map(c => c.replace(/^"|"$/g, '').trim());
+  }
+
+  const lines = csv.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return 0;
+
+  // Auto-detect columns from header, fallback to fixed positions
+  const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  let CODE  = header.findIndex(h => h === 'employee code');
+  let NAME  = header.findIndex(h => h === 'full name');
+  let FNAME = header.findIndex(h => h === 'first name');
+  let LNAME = header.findIndex(h => h === 'last name');
+  let TITLE = header.findIndex(h => h === 'job title');
+
+  // Fallback to known fixed positions
+  if (CODE  < 0) CODE  = 4;
+  if (NAME  < 0) NAME  = 7;
+  if (FNAME < 0) FNAME = 5;
+  if (LNAME < 0) LNAME = 6;
+  if (TITLE < 0) TITLE = 9;
+
+  let loaded = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const c = parseCSVLine(lines[i]);
+    if (c.length < 5) continue;
+    const code = c[CODE] || '';
+    if (!code) continue;
+    const name  = c[NAME] || (c[FNAME] + ' ' + c[LNAME]).trim() || '';
+    const title = c[TITLE] || '';
+    if (!employeeMap[code]) {
+      employeeMap[code] = { name, title };
+      loaded++;
+    }
+  }
+  return loaded;
+}
+
+function setEmpPill(cls, text) {
+  const el = document.getElementById('emp-pill');
+  el.className = cls; el.textContent = text;
+  el.style.cursor = cls === 'error' ? 'pointer' : 'default';
+  el.onclick = cls === 'error' ? openEmpModal : null;
+}
+
+// ── Date quick select ──
+function setQuick(q, el) {
+  document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const t = new Date(); t.setHours(0,0,0,0);
+  let s, e;
+  if      (q==='today')     { s=e=t; }
+  else if (q==='yesterday') { s=e=addD(t,-1); }
+  else if (q==='week')      { s=addD(t,-6); e=t; }
+  else if (q==='month')     { s=new Date(t.getFullYear(),t.getMonth(),1); e=t; }
+  else if (q==='lastmonth') { s=new Date(t.getFullYear(),t.getMonth()-1,1); e=new Date(t.getFullYear(),t.getMonth(),0); }
+  else if (q==='quarter')   { const qs=Math.floor(t.getMonth()/3)*3; s=new Date(t.getFullYear(),qs,1); e=t; }
+  document.getElementById('start-date').value = fmt(s);
+  document.getElementById('end-date').value   = fmt(e);
+  hideErr();
+}
+
+document.getElementById('start-date').addEventListener('change', chkRange);
+document.getElementById('end-date').addEventListener('change', chkRange);
+function chkRange() {
+  const s=document.getElementById('start-date').value, e=document.getElementById('end-date').value;
+  if (!s||!e) return;
+  const d=diffD(pDate(s),pDate(e));
+  if (d<0) { showErr("End date must be after start date."); return; }
+  if (d>90) { showErr("Maximum 90 days. Please adjust."); return; }
+  hideErr();
+  document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active'));
+}
+
+// ── Fetch Attendance ──
+async function fetchAttendance() {
+  hideErr();
+  const sv=document.getElementById('start-date').value, ev=document.getElementById('end-date').value;
+  if (!sv||!ev) { showErr("Please select start and end dates."); return; }
+  const sd=pDate(sv), ed=pDate(ev), td=diffD(sd,ed);
+  if (td<0) { showErr("End date must be after start date."); return; }
+  if (td>90) { showErr("Maximum 90 days."); return; }
+
+  // Determine which account(s) and center(s) to fetch
+  const ctrlVal = document.getElementById('center-select-ctrl').value;
+  const selOpt  = document.getElementById('center-select-ctrl').selectedOptions[0];
+  const selBrand = selOpt ? selOpt.dataset.brand : '';
+  const selCode  = selOpt ? (selOpt.dataset.code || '') : '';
+
+  // Decide which accounts to call
+  let accountsToFetch = [];
+  if (!ctrlVal || ctrlVal === '__ALL__') {
+    // Both brands — all centers
+    accountsToFetch = [
+      { acct: ACCT1, centerCode: '' },
+      { acct: ACCT2, centerCode: '' }
+    ];
+  } else if (selBrand === 'JCB') {
+    accountsToFetch = [{ acct: ACCT1, centerCode: selCode }];
+  } else {
+    accountsToFetch = [{ acct: ACCT2, centerCode: selCode }];
+  }
+
+  // Build 6-day chunks
+  const chunks = [];
+  let cur = new Date(sd);
+  while (cur <= ed) {
+    const ce = new Date(Math.min(addD(cur,CHUNK-1),ed));
+    chunks.push({from:new Date(cur),to:new Date(ce)});
+    cur = addD(ce,1);
+  }
+
+  const totalBatches = chunks.length * accountsToFetch.length;
+  const btn = document.getElementById('fetch-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Fetching…';
+  showProg(0, `Batch 0/${totalBatches}`);
+
+  const merged = {};
+  let hasErr = false;
+  let batchDone = 0;
+
+  for (const {acct, centerCode} of accountsToFetch) {
+    for (let i=0;i<chunks.length;i++) {
+      const c=chunks[i];
+      const st=fmt(c.from)+" 00:01:00", et=fmt(c.to)+" 23:59:00";
+      const url=acct.url+
+        "?userName="+encodeURIComponent(acct.user)+
+        "&password="+encodeURIComponent(acct.pass)+
+        "&accountName="+encodeURIComponent(acct.acct)+
+        "&operation=all"+
+        "&starttime="+encodeURIComponent(st)+
+        "&endtime="+encodeURIComponent(et);
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error("HTTP "+resp.status);
+        const data = await resp.json();
+        (data.status||[]).forEach(item=>{
+          // If center filter selected, only keep that center's records
+          if (centerCode && item.centerCode !== centerCode) return;
+
+          // Tag which brand this record came from
+          const brandTag = acct.brand;
+          const key = brandTag+"---"+item.employeeCode+"---"+item.date;
+          if (!merged[key]) {
+            merged[key] = {
+              employeeCode: item.employeeCode||"",
+              centerName:   item.centerName||"",
+              centerCode:   item.centerCode||"",
+              date:         item.date||"",
+              checkin:      item.acutalCheckinTime||"",
+              checkout:     item.acutalCheckoutTime||"",
+              brand:        brandTag
+            };
+          } else {
+            if (item.acutalCheckinTime&&(!merged[key].checkin||item.acutalCheckinTime<merged[key].checkin))
+              merged[key].checkin=item.acutalCheckinTime;
+            if (item.acutalCheckoutTime&&(!merged[key].checkout||item.acutalCheckoutTime>merged[key].checkout))
+              merged[key].checkout=item.acutalCheckoutTime;
+          }
+        });
+      } catch(e) { hasErr=true; }
+
+      batchDone++;
+      const pct=Math.round((batchDone/totalBatches)*100);
+      showProg(pct, `[${acct.brand}] Batch ${i+1}/${chunks.length} — ${pct}%`);
+      await sleep(180);
+    }
+  }
+
+  // Merge new records into allData
+  const newRows = processRecords(merged);
+
+  // Remove old records that overlap with the fetched date range + center filter
+  const fetchStart = sv, fetchEnd = ev;
+  allData = allData.filter(r => {
+    const inRange = r.date >= fetchStart && r.date <= fetchEnd;
+    const inBrand = accountsToFetch.length > 1
+      ? true
+      : r.brand === accountsToFetch[0].acct.brand;
+    const inCenter = !selCode || r.centerCode === selCode;
+    return !(inRange && inBrand && inCenter);
+  });
+  allData = allData.concat(newRows);
+
+  // Sort combined data
+  allData.sort((a,b)=>b.date.localeCompare(a.date)||a.centerCode.localeCompare(b.centerCode)||a.employeeCode.localeCompare(b.employeeCode));
+
+  populateCenterTableFilter();
+  applyFilters();
+  hideProg();
+  btn.disabled = false;
+  btn.innerHTML = '⬇ Fetch Attendance';
+
+  const brandLabel = accountsToFetch.length > 1 ? 'Both Brands' : accountsToFetch[0].acct.brand;
+  if (hasErr) showInfo(`Some batches had errors — data may be partial. Total records: ${allData.length.toLocaleString()}`);
+  else showInfo(`✅ Fetched ${newRows.length.toLocaleString()} records · ${brandLabel}${selCode?' — '+selCode:''} · ${sv} to ${ev} · Total in memory: ${allData.length.toLocaleString()}`, 5000);
+}
+
+// ── Process raw merged map → row array ──
+function processRecords(merged) {
+  return Object.values(merged).map(item => {
+    const dateObj = new Date(item.date+"T00:00:00");
+    let working="", status="", diff=0;
+    const ci=item.checkin, co=item.checkout;
+    if (ci && !co) {
+      // Has check-in but no check-out
+      status = "No Checkout";
+    } else if (ci&&co&&ci!==co) {
+      const cip=ci.split(":"), cop=co.split(":");
+      diff=(+cop[0]*60+ +cop[1])-(+cip[0]*60+ +cip[1]);
+      if (diff>0) {
+        working=String(Math.floor(diff/60)).padStart(2,"0")+":"+String(diff%60).padStart(2,"0");
+        if      (diff<525) status="Less than 8:45";
+        else if (diff<540) status="Less working hours";
+        // else status="" = Full Day
+      } else { status="No Attendance"; }
+    } else { status="No Attendance"; }
+
+    const emp = employeeMap[item.employeeCode]||{};
+    return {
+      centerCode:   item.centerCode,
+      centerName:   item.centerName,
+      employeeCode: item.employeeCode,
+      employeeName: emp.name  || "",
+      jobTitle:     emp.title || "",
+      month:        MONTHS[dateObj.getMonth()],
+      date:         item.date,
+      day:          DAYS[dateObj.getDay()],
+      checkin:      ci||"",
+      checkout:     co||"",
+      working,
+      status,
+      workMinutes:  diff,
+      brand:        item.brand || ""
+    };
+  });
+}
+
+// ── Sort ──
+let sortAsc = false;
+function sortBy(col) {
+  if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=false; }
+  // Update header arrows
+  document.querySelectorAll('th').forEach(th=>{
+    th.classList.remove('sorted');
+    const a=th.querySelector('.sort-arrow');
+    if(a) a.textContent='↕';
+  });
+  const ths=document.querySelectorAll('th');
+  const cols=['brand','centerCode','centerName','employeeCode','employeeName','jobTitle','month','date','day','checkin','checkout','workMinutes','status'];
+  const idx=cols.indexOf(col);
+  if(idx>=0&&ths[idx]){
+    ths[idx].classList.add('sorted');
+    const a=ths[idx].querySelector('.sort-arrow');
+    if(a) a.textContent=sortAsc?'↑':'↓';
+  }
+  filteredData.sort((a,b)=>{
+    let va=a[col]||"", vb=b[col]||"";
+    if(col==='workMinutes'){va=+va||0;vb=+vb||0;return sortAsc?va-vb:vb-va;}
+    const r=String(va).localeCompare(String(vb));
+    return sortAsc?r:-r;
+  });
+  currentPage=1;
+  renderTable();
+}
+
+// ── Filters ──
+function applyFilters() {
+  const search  = document.getElementById('search-emp').value.trim().toLowerCase();
+  const statusF = document.getElementById('f-status').value;
+  const centerF = document.getElementById('f-center').value;
+  const brandF  = document.getElementById('f-brand').value;
+
+  filteredData = allData.filter(r=>{
+    if (search) {
+      if (!r.employeeCode.toLowerCase().includes(search) &&
+          !r.employeeName.toLowerCase().includes(search)) return false;
+    }
+    if (brandF  && r.brand !== brandF) return false;
+    if (centerF && r.centerCode!==centerF) return false;
+    if (statusF) {
+      if (statusF==='ok') { if (r.status!=="") return false; }
+      else { if (r.status!==statusF) return false; }
+    }
+    return true;
+  });
+
+  // Re-apply current sort
+  if (sortCol) {
+    filteredData.sort((a,b)=>{
+      let va=a[sortCol]||"", vb=b[sortCol]||"";
+      if(sortCol==='workMinutes'){va=+va||0;vb=+vb||0;return sortAsc?va-vb:vb-va;}
+      const r=String(va).localeCompare(String(vb));
+      return sortAsc?r:-r;
+    });
+  }
+
+  currentPage=1;
+  updateStats();
+  renderTable();
+}
+
+function updateStats() {
+  const s = filteredData;
+  document.getElementById('s-total').textContent      = s.length.toLocaleString();
+  document.getElementById('s-present').textContent    = s.filter(r=>r.status==="").length.toLocaleString();
+  document.getElementById('s-absent').textContent     = s.filter(r=>r.status==="No Attendance").length.toLocaleString();
+  document.getElementById('s-nocheckout').textContent = s.filter(r=>r.status==="No Checkout").length.toLocaleString();
+  document.getElementById('s-less').textContent       = s.filter(r=>r.status==="Less working hours").length.toLocaleString();
+  document.getElementById('s-late').textContent       = s.filter(r=>r.status==="Less than 8:45").length.toLocaleString();
+  document.getElementById('s-emps').textContent       = new Set(s.map(r=>r.employeeCode)).size.toLocaleString();
+}
+
+function populateCenterTableFilter() {
+  const codes = [...new Set(allData.map(r=>r.centerCode))].sort();
+  const sel = document.getElementById('f-center');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Centers</option>';
+  codes.forEach(code=>{
+    const c=CENTERS.find(x=>x.code===code);
+    const o=document.createElement('option');
+    o.value=code;
+    o.textContent=code+(c?' — '+c.name:'');
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+
+// ── Render table ──
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  const total = filteredData.length;
+  document.getElementById('rec-count').textContent = total.toLocaleString()+" records";
+
+  if (!total) {
+    tbody.innerHTML=`<tr><td colspan="13"><div class="empty-s">
+      <div class="eico">${allData.length?'🔍':'📅'}</div>
+      <h4>${allData.length?'No matching records':'No data yet'}</h4>
+      <p>${allData.length?'Try adjusting filters or search.':'Select a date range and click <strong>Fetch Attendance</strong>.'}</p>
+    </div></td></tr>`;
+    document.getElementById('pgn').style.display='none';
+    return;
+  }
+
+  const start=(currentPage-1)*PG_SIZE, end=Math.min(start+PG_SIZE,total);
+  tbody.innerHTML = filteredData.slice(start,end).map(r=>{
+    const badge = r.status===""
+      ?`<span class="badge b-ok">✅ Full Day</span>`
+      :r.status==="No Checkout"
+        ?`<span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa">🚪 No Checkout</span>`
+        :r.status==="Less than 8:45"
+          ?`<span class="badge b-lt">⚠ ${r.status}</span>`
+          :r.status==="Less working hours"
+            ?`<span class="badge b-lw">⏱ Less hours</span>`
+            :`<span class="badge b-ab">❌ Absent</span>`;
+    const brandBadge = r.brand === 'Bounce'
+      ? `<span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:#ede9fe;color:#5b21b6">Bounce</span>`
+      : `<span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:var(--blue-light);color:var(--blue)">JCB</span>`;
+    return `<tr>
+      <td>${brandBadge}</td>
+      <td><span class="cc">${esc(r.centerCode)}</span></td>
+      <td>${esc(r.centerName)}</td>
+      <td><code style="font-size:11px;color:var(--gray-600)">${esc(r.employeeCode)}</code></td>
+      <td>${esc(r.employeeName)||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td style="color:var(--gray-500)">${esc(r.jobTitle)||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>${esc(r.month)}</td>
+      <td>${esc(r.date)}</td>
+      <td>${esc(r.day)}</td>
+      <td>${r.checkin?`<span style="color:var(--green-dark);font-weight:600">${esc(r.checkin)}</span>`:'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>${r.checkout?`<span style="color:var(--blue);font-weight:600">${esc(r.checkout)}</span>`:'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td style="font-weight:500">${r.working||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  // Pagination
+  const tp=Math.ceil(total/PG_SIZE);
+  document.getElementById('pgn').style.display='flex';
+  document.getElementById('pgn-info').textContent=`Showing ${start+1}–${end} of ${total.toLocaleString()}`;
+  const btns=document.getElementById('pgn-btns');
+  btns.innerHTML='';
+  const ab=(lbl,pg,dis,act)=>{
+    const b=document.createElement('button');
+    b.className='pb'+(act?' act':'');
+    b.textContent=lbl; b.disabled=dis;
+    if(!dis) b.onclick=()=>goPage(pg);
+    btns.appendChild(b);
+  };
+  ab('‹',currentPage-1,currentPage===1,false);
+  pRange(currentPage,tp).forEach(p=>{
+    if(p==='…'){const s=document.createElement('span');s.textContent='…';s.style.cssText='padding:3px 5px;color:var(--gray-400);font-size:11px';btns.appendChild(s);}
+    else ab(p,p,false,p===currentPage);
+  });
+  ab('›',currentPage+1,currentPage===tp,false);
+}
+
+function goPage(p){ currentPage=p; renderTable(); document.querySelector('.twrap').scrollIntoView({behavior:'smooth',block:'start'}); }
+function pRange(c,t){
+  if(t<=7) return Array.from({length:t},(_,i)=>i+1);
+  if(c<=4) return [1,2,3,4,5,'…',t];
+  if(c>=t-3) return [1,'…',t-4,t-3,t-2,t-1,t];
+  return [1,'…',c-1,c,c+1,'…',t];
+}
+
+// ── CSV ──
+function downloadCSV(){
+  if(!filteredData.length){alert("No data.");return;}
+  const h=["Brand","Center Code","Center Name","Employee Code","Employee Name","Job Title","Month","Date","Day","Check In","Check Out","Working Hours","Status"];
+  const rows=filteredData.map(r=>[
+    r.brand,r.centerCode,r.centerName,r.employeeCode,r.employeeName,r.jobTitle,
+    r.month,r.date,r.day,r.checkin,r.checkout,r.working,
+    r.status===""?"Full Day":r.status
+  ].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  const url=URL.createObjectURL(new Blob([[h.join(','),...rows].join('\n')],{type:'text/csv'}));
+  const a=document.createElement('a'); a.href=url;
+  a.download=`attendance_${document.getElementById('start-date').value}_to_${document.getElementById('end-date').value}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── Progress / banners ──
+function showProg(pct,txt){
+  document.getElementById('prog-wrap').className='on';
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-text').textContent=txt;
+  document.getElementById('prog-pct').textContent=pct+'%';
+}
+function hideProg(){ document.getElementById('prog-wrap').className=''; }
+function showErr(m){ const e=document.getElementById('err-banner'); e.textContent=m; e.className='banner err on'; }
+function hideErr(){ document.getElementById('err-banner').className='banner err'; }
+function showInfo(m,ms=6000){
+  const e=document.getElementById('info-banner'); e.textContent=m; e.className='banner info on';
+  clearTimeout(showInfo._t);
+  showInfo._t=setTimeout(()=>{ e.className='banner info'; },ms);
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.mtab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  // Show/hide load button
+  document.getElementById('paste-load-btn').style.display = name==='paste' ? '' : 'none';
+}
+
+// ── Init ──
+(function(){
+  const t=new Date(), f=new Date(t.getFullYear(),t.getMonth(),1);
+  document.getElementById('start-date').value=fmt(f);
+  document.getElementById('end-date').value=fmt(t);
+  // Restore saved Apps Script URL
+  const saved = localStorage.getItem('appsScriptUrl');
+  if (saved) {
+    APPS_SCRIPT_URL = saved;
+    document.getElementById('apps-script-url-input').value = saved;
+  }
+  // Auto-load employees
+  loadEmployeesFromSheet();
+})();
+</script>
+</body>
+</html>
