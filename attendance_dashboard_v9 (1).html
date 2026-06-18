@@ -1,0 +1,3432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JCB Attendance Dashboard</title>
+<style>
+  :root {
+    --green:#00A86B; --green-dark:#007a4d; --green-light:#e6f7f1;
+    --blue:#1a5fa8; --blue-light:#e8f0fb;
+    --amber:#f59e0b; --amber-light:#fef3c7;
+    --red:#ef4444; --red-light:#fee2e2;
+    --yellow:#fbbf24; --yellow-light:#fef9c3;
+    --purple:#7c3aed; --purple-light:#ede9fe;
+    --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+    --gray-300:#d1d5db; --gray-400:#9ca3af; --gray-500:#6b7280;
+    --gray-600:#4b5563; --gray-700:#374151; --gray-800:#1f2937;
+    --white:#fff; --radius:10px;
+    --shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md:0 4px 16px rgba(0,0,0,0.09);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gray-50);color:var(--gray-800);font-size:14px;line-height:1.5}
+
+  /* ── Header ── */
+  .header{background:var(--white);border-bottom:1px solid var(--gray-200);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0}
+  .brand-text .t1{font-size:14px;font-weight:600;color:var(--gray-800)}
+  .brand-text .t2{font-size:11px;color:var(--gray-400)}
+  .header-actions{display:flex;align-items:center;gap:8px}
+
+  /* emp status pill */
+  #emp-pill{font-size:11px;padding:4px 10px;border-radius:99px;font-weight:600;border:1px solid var(--gray-200);color:var(--gray-500);background:var(--gray-100);white-space:nowrap;cursor:default}
+  #emp-pill.loading{background:#fff8e1;border-color:#fbbf24;color:#92400e}
+  #emp-pill.ok{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  #emp-pill.error{background:var(--red-light);border-color:#fca5a5;color:#991b1b;cursor:pointer}
+  #emp-pill.error:hover{background:#fecaca}
+
+  .hbtn{border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .15s;white-space:nowrap}
+  #load-emp-btn{background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd}
+  #load-emp-btn:hover{background:#ddd6fe}
+  #load-emp-btn:disabled{opacity:.5;cursor:not-allowed}
+  #fetch-btn{background:var(--green);color:#fff}
+  #fetch-btn:hover{background:var(--green-dark)}
+  #fetch-btn:disabled{background:var(--gray-300);cursor:not-allowed}
+
+  /* ── Controls bar ── */
+  .controls-bar{background:var(--white);border-bottom:1px solid var(--gray-200);padding:12px 24px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .cg{display:flex;flex-direction:column;gap:3px}
+  .cg label{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.6px}
+  .quick-btns{display:flex;gap:3px;flex-wrap:wrap}
+  .qbtn{background:var(--gray-100);border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:12px;font-weight:500;color:var(--gray-600);cursor:pointer;transition:all .12s;white-space:nowrap}
+  .qbtn:hover{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  .qbtn.active{background:var(--green);border-color:var(--green);color:#fff}
+  input[type=date],input[type=text],select{border:1px solid var(--gray-200);border-radius:7px;padding:5px 9px;font-size:12px;color:var(--gray-800);background:var(--white);outline:none;height:32px;transition:border .12s}
+  input[type=date]:focus,input[type=text]:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  .dr-wrap{display:flex;align-items:center;gap:5px}
+  .dr-wrap span{font-size:11px;color:var(--gray-400)}
+  #search-emp{width:180px}
+  #center-select-ctrl{width:190px}
+  .controls-divider{width:1px;height:32px;background:var(--gray-200);margin:0 4px;align-self:flex-end}
+
+  /* ── Progress ── */
+  #prog-wrap{display:none;background:var(--white);border-bottom:1px solid var(--gray-200);padding:8px 24px}
+  #prog-wrap.on{display:block}
+  .prog-row{display:flex;justify-content:space-between;font-size:11px;color:var(--gray-500);margin-bottom:5px}
+  .prog-bg{height:4px;background:var(--gray-200);border-radius:99px;overflow:hidden}
+  .prog-fill{height:100%;background:var(--green);border-radius:99px;transition:width .3s ease;width:0}
+
+  /* ── Error/info banners ── */
+  .banner{border-radius:8px;padding:9px 14px;font-size:12px;margin:0 24px;display:none}
+  .banner.on{display:block;margin-bottom:10px}
+  .banner.err{background:var(--red-light);color:#7f1d1d;border:1px solid #fca5a5}
+  .banner.info{background:var(--amber-light);color:#92400e;border:1px solid #fcd34d}
+
+  /* ── Stats ── */
+  .main{padding:18px 24px;flex:1}
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:18px}
+  .sc{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
+  .sc.c-green::before{background:var(--green)}
+  .sc.c-red::before{background:var(--red)}
+  .sc.c-yellow::before{background:var(--yellow)}
+  .sc.c-amber::before{background:var(--amber)}
+  .sc.c-blue::before{background:var(--blue)}
+  .sc.c-gray::before{background:var(--gray-400)}
+  .sico{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;margin-bottom:8px}
+  .sc.c-green .sico{background:var(--green-light)}
+  .sc.c-red .sico{background:var(--red-light)}
+  .sc.c-yellow .sico{background:var(--yellow-light)}
+  .sc.c-amber .sico{background:var(--amber-light)}
+  .sc.c-blue .sico{background:var(--blue-light)}
+  .sc.c-gray .sico{background:var(--gray-100)}
+  .sval{font-size:24px;font-weight:700;color:var(--gray-800);line-height:1;margin-bottom:3px}
+  .slbl{font-size:11px;color:var(--gray-500);font-weight:500}
+
+  /* ── Table card ── */
+  .tcard{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .thead-bar{padding:12px 16px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .thead-bar h3{font-size:13px;font-weight:600;color:var(--gray-800)}
+  .thead-right{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .rec-count{font-size:11px;color:var(--gray-500);background:var(--gray-100);padding:3px 9px;border-radius:99px;white-space:nowrap}
+  select.tf{font-size:11px;height:28px;padding:3px 7px}
+  .twrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead tr{background:var(--gray-50);border-bottom:2px solid var(--gray-200)}
+  th{text-align:left;padding:9px 11px;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;cursor:pointer;user-select:none}
+  th:hover{color:var(--gray-700)}
+  th .sort-arrow{margin-left:3px;opacity:.4;font-size:9px}
+  th.sorted .sort-arrow{opacity:1;color:var(--green)}
+  tbody tr{border-bottom:1px solid var(--gray-100);transition:background .1s}
+  tbody tr:hover{background:#f9fafb}
+  tbody tr:last-child{border-bottom:none}
+  td{padding:8px 11px;color:var(--gray-700);white-space:nowrap}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+  .b-ok{background:var(--green-light);color:#065f46}
+  .b-lt{background:var(--yellow-light);color:#92400e}
+  .b-lw{background:var(--red-light);color:#991b1b}
+  .b-ab{background:#fee2e2;color:#7f1d1d}
+  .cc{display:inline-block;background:var(--blue-light);color:var(--blue);font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px}
+  .empty-s{text-align:center;padding:50px 20px;color:var(--gray-400)}
+  .empty-s .eico{font-size:36px;margin-bottom:10px}
+  .empty-s h4{font-size:14px;color:var(--gray-600);margin-bottom:5px}
+  .empty-s p{font-size:12px}
+  #dl-btn{background:var(--white);border:1px solid var(--gray-200);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--gray-600);cursor:pointer;display:flex;align-items:center;gap:4px;transition:all .12s}
+  #dl-btn:hover{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+
+  /* ── Pagination ── */
+  .pgn{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--gray-200);flex-wrap:wrap;gap:6px}
+  .pgn-info{font-size:11px;color:var(--gray-500)}
+  .pgn-btns{display:flex;gap:3px}
+  .pb{border:1px solid var(--gray-200);background:var(--white);border-radius:5px;padding:3px 9px;font-size:11px;color:var(--gray-600);cursor:pointer;transition:all .12s}
+  .pb:hover,.pb.act{background:var(--green);border-color:var(--green);color:#fff}
+  .pb:disabled{opacity:.4;cursor:not-allowed}
+  .app{display:flex;flex-direction:column;min-height:calc(100vh - 56px)}
+
+  /* ── Paste Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:500;align-items:center;justify-content:center}
+  .modal-overlay.on{display:flex}
+  .modal{background:var(--white);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.18);width:560px;max-width:95vw;overflow:hidden}
+  .modal-head{padding:18px 20px 14px;border-bottom:1px solid var(--gray-200);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-head h2{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:3px}
+  .modal-head p{font-size:12px;color:var(--gray-500);line-height:1.5}
+  .modal-close{background:var(--gray-100);border:none;border-radius:6px;width:28px;height:28px;font-size:16px;cursor:pointer;color:var(--gray-500);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .modal-close:hover{background:var(--gray-200)}
+  .modal-body{padding:16px 20px}
+  .step-row{display:flex;gap:10px;margin-bottom:14px;align-items:flex-start}
+  .step-num{width:22px;height:22px;border-radius:99px;background:var(--green);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .step-text{font-size:12px;color:var(--gray-600);line-height:1.6}
+  .step-text strong{color:var(--gray-800)}
+  .step-text code{background:var(--gray-100);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--green-dark)}
+  #paste-area{width:100%;height:110px;border:2px dashed var(--gray-200);border-radius:8px;padding:10px;font-size:12px;font-family:monospace;color:var(--gray-700);resize:vertical;outline:none;transition:border .15s}
+  #paste-area:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  #paste-area::placeholder{color:var(--gray-400)}
+  .modal-footer{padding:12px 20px;border-top:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .modal-footer .hint{font-size:11px;color:var(--gray-400)}
+  .mbtn{border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+  .mbtn-cancel{background:var(--gray-100);color:var(--gray-600)}
+  .mbtn-cancel:hover{background:var(--gray-200)}
+  .mbtn-load{background:var(--green);color:#fff}
+  .mbtn-load:hover{background:var(--green-dark)}
+  #paste-result{font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;display:none}
+  #paste-result.ok{display:block;background:var(--green-light);color:#065f46;border:1px solid #a7f3d0}
+  #paste-result.err{display:block;background:var(--red-light);color:#991b1b;border:1px solid #fca5a5}
+  /* ── Employee Modal ── */
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center}
+  .modal-overlay.on{display:flex}
+  .modal{background:#fff;border-radius:14px;box-shadow:0 24px 64px rgba(0,0,0,0.18);width:580px;max-width:96vw;max-height:90vh;overflow-y:auto}
+  .mhead{padding:20px 22px 16px;border-bottom:1px solid var(--gray-200);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .mhead-text h2{font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:3px}
+  .mhead-text p{font-size:12px;color:var(--gray-500);line-height:1.5}
+  .mclose{background:var(--gray-100);border:none;border-radius:6px;width:28px;height:28px;font-size:15px;cursor:pointer;color:var(--gray-500);flex-shrink:0}
+  .mclose:hover{background:var(--gray-200)}
+  .mbody{padding:18px 22px}
+  .mtabs{display:flex;gap:2px;background:var(--gray-100);border-radius:8px;padding:3px;margin-bottom:18px}
+  .mtab{flex:1;border:none;border-radius:6px;padding:7px;font-size:12px;font-weight:600;cursor:pointer;color:var(--gray-500);background:transparent;transition:all .15s}
+  .mtab.active{background:#fff;color:var(--gray-800);box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+  .mtab-panel{display:none}
+  .mtab-panel.active{display:block}
+  .step{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
+  .stepn{width:20px;height:20px;border-radius:99px;background:var(--green);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+  .stept{font-size:12px;color:var(--gray-600);line-height:1.6}
+  .stept strong{color:var(--gray-800)}
+  .stept code{background:var(--gray-100);padding:1px 5px;border-radius:4px;font-size:11px;color:var(--green-dark);font-family:monospace}
+  .code-block{background:var(--gray-800);color:#a5f3c4;border-radius:8px;padding:12px 14px;font-size:11px;font-family:monospace;line-height:1.8;margin:10px 0;white-space:pre-wrap;word-break:break-all}
+  textarea#paste-area{width:100%;height:100px;border:2px dashed var(--gray-200);border-radius:8px;padding:10px;font-size:12px;font-family:monospace;resize:vertical;outline:none;transition:border .15s}
+  textarea#paste-area:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  textarea#paste-area::placeholder{color:var(--gray-400)}
+  input.url-input{width:100%;border:1px solid var(--gray-200);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:monospace}
+  input.url-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  .paste-result{font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;display:none}
+  .paste-result.ok{display:block;background:var(--green-light);color:#065f46;border:1px solid #a7f3d0}
+  .paste-result.err{display:block;background:var(--red-light);color:#991b1b;border:1px solid #fca5a5}
+  .mfoot{padding:12px 22px;border-top:1px solid var(--gray-200);display:flex;justify-content:flex-end;gap:8px}
+  .mbtn{border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+  .mbtn-cancel{background:var(--gray-100);color:var(--gray-600)}
+  .mbtn-cancel:hover{background:var(--gray-200)}
+  .mbtn-ok{background:var(--green);color:#fff}
+  .mbtn-ok:hover{background:var(--green-dark)}
+  .saved-tag{display:none;font-size:11px;color:var(--green-dark);font-weight:600;background:var(--green-light);padding:3px 8px;border-radius:99px}
+
+  /* ── Login Screen ── */
+  #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f4c2a 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
+  #login-screen.hidden{display:none}
+  #pwchange-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 50%,#0f4c2a 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
+  #pwchange-screen.hidden{display:none}
+  .login-box{background:#fff;border-radius:20px;padding:40px 36px;width:380px;max-width:95vw;box-shadow:0 25px 80px rgba(0,0,0,0.4)}
+  .login-logo{width:56px;height:56px;background:var(--green);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:18px;margin:0 auto 16px}
+  .login-title{text-align:center;font-size:20px;font-weight:700;color:var(--gray-800);margin-bottom:4px}
+  .login-sub{text-align:center;font-size:12px;color:var(--gray-400);margin-bottom:28px}
+  .login-field{margin-bottom:16px}
+  .login-field label{display:block;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+  .login-field input{width:100%;border:1.5px solid var(--gray-200);border-radius:9px;padding:10px 14px;font-size:14px;outline:none;transition:border .15s;color:var(--gray-800)}
+  .login-field input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.12)}
+  .login-btn{width:100%;background:var(--green);color:#fff;border:none;border-radius:9px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background .15s}
+  .login-btn:hover{background:var(--green-dark)}
+  .login-err{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:7px;padding:9px 12px;font-size:12px;margin-top:12px;display:none;text-align:center}
+  .login-err.on{display:block}
+
+  /* ── User Management Panel ── */
+  #um-screen{position:fixed;inset:0;background:var(--gray-50);z-index:8000;display:none;flex-direction:column}
+  #um-screen.on{display:flex}
+  .um-header{background:#fff;border-bottom:1px solid var(--gray-200);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow)}
+  .um-header h1{font-size:15px;font-weight:700;color:var(--gray-800)}
+  .um-body{padding:24px;flex:1;overflow-y:auto;max-width:1100px;margin:0 auto;width:100%}
+  .um-section{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden}
+  .um-section-head{padding:14px 18px;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between}
+  .um-section-head h2{font-size:13px;font-weight:700;color:var(--gray-800)}
+  .um-form{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .um-form.full{grid-template-columns:1fr}
+  .uf{display:flex;flex-direction:column;gap:4px}
+  .uf label{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px}
+  .uf input,.uf select{border:1px solid var(--gray-200);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;transition:border .12s}
+  .uf input:focus,.uf select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,107,0.1)}
+  .um-centers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px;max-height:180px;overflow-y:auto;border:1px solid var(--gray-200);border-radius:7px;padding:10px}
+  .um-centers-grid label{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--gray-700);cursor:pointer;padding:3px 4px;border-radius:4px}
+  .um-centers-grid label:hover{background:var(--gray-50)}
+  .um-centers-grid input[type=checkbox]{accent-color:var(--green);width:13px;height:13px}
+  .um-actions{padding:14px 18px;border-top:1px solid var(--gray-200);display:flex;gap:8px;justify-content:flex-end}
+  .ubtn{border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s}
+  .ubtn-primary{background:var(--green);color:#fff}
+  .ubtn-primary:hover{background:var(--green-dark)}
+  .ubtn-secondary{background:var(--gray-100);color:var(--gray-600);border:1px solid var(--gray-200)}
+  .ubtn-secondary:hover{background:var(--gray-200)}
+  .ubtn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .ubtn-danger:hover{background:#fecaca}
+  .users-table{width:100%;border-collapse:collapse;font-size:12px}
+  .users-table th{background:var(--gray-50);padding:9px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--gray-200)}
+  .users-table td{padding:9px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:middle}
+  .users-table tr:last-child td{border-bottom:none}
+  .users-table tr:hover td{background:var(--gray-50)}
+  .tag{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;margin:1px}
+  .tag-jcb{background:var(--blue-light);color:var(--blue)}
+  .tag-bounce{background:#ede9fe;color:#5b21b6}
+  .tag-both{background:var(--green-light);color:var(--green-dark)}
+  .tag-center{background:var(--gray-100);color:var(--gray-600)}
+  .tag-dl-yes{background:#dcfce7;color:#166534}
+  .tag-dl-no{background:#fee2e2;color:#991b1b}
+  .tag-admin{background:#fef3c7;color:#92400e}
+  .um-empty{text-align:center;padding:32px;color:var(--gray-400);font-size:12px}
+
+  /* ── Logged-in user pill in header ── */
+  .user-pill{display:flex;align-items:center;gap:6px;background:var(--gray-100);border:1px solid var(--gray-200);border-radius:99px;padding:4px 12px 4px 6px;font-size:11px;font-weight:600;color:var(--gray-700)}
+  .user-pill .avatar{width:22px;height:22px;border-radius:99px;background:var(--green);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .hbtn-admin{background:#fef3c7;color:#92400e;border:1px solid #fcd34d}
+  .hbtn-admin:hover{background:#fde68a}
+  .hbtn-logout{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5}
+  .hbtn-logout:hover{background:#fecaca}
+
+  /* ── View Tabs ── */
+  .view-tabs{display:flex;gap:4px;padding:14px 20px 0;background:#fff;border-bottom:1px solid var(--gray-200)}
+  .vtab{padding:8px 18px;border:none;background:none;font-size:13px;font-weight:600;color:var(--gray-400);cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-1px;border-radius:6px 6px 0 0;transition:all .15s}
+  .vtab:hover{color:var(--gray-600);background:var(--gray-50)}
+  .vtab.active{color:var(--green-dark);border-bottom-color:var(--green);background:var(--green-light)}
+
+  /* ── Heatmap ── */
+  #heatmap-view{display:none}
+  #heatmap-view.active{display:block}
+  #table-view{display:block}
+  #table-view.hidden{display:none}
+  .hm-wrap{overflow-x:auto;padding:0}
+  .hm-table{border-collapse:collapse;font-size:11px;min-width:100%}
+  .hm-table th,.hm-table td{padding:0;border:1px solid #e5e7eb}
+  .hm-table .hm-emp-col{min-width:170px;max-width:200px;position:sticky;left:0;background:#fff;z-index:2;padding:6px 10px;border-right:2px solid var(--gray-300)}
+  .hm-table .hm-emp-col.head{background:var(--gray-800);color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;z-index:3}
+  .hm-emp-name{font-weight:700;color:var(--gray-800);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:155px}
+  .hm-emp-hrs{font-size:9px;color:var(--gray-400);margin-top:1px}
+  .hm-date-head{min-width:34px;width:34px;text-align:center;padding:4px 2px!important;background:var(--gray-800);color:#fff;font-size:9px;font-weight:700;line-height:1.3}
+  .hm-date-head .dn{font-size:8px;font-weight:400;opacity:.7}
+  .hm-date-head.dh-wknd{background:#1e40af!important}   /* blue for weekend col header */
+  .hm-date-head.dh-holiday{background:#5b21b6!important} /* purple for holiday col header */
+
+  /* Holiday Manager Panel */
+  #holiday-view{display:none}
+  #holiday-view.active{display:block;padding:20px}
+  .hl-grid{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+  .hl-card{background:#fff;border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .hl-card-head{padding:12px 16px;border-bottom:1px solid var(--gray-200);font-size:13px;font-weight:700;color:var(--gray-800);display:flex;align-items:center;justify-content:space-between}
+  .hl-form{padding:16px;display:flex;flex-direction:column;gap:10px}
+  .hl-form input,.hl-form select{border:1px solid var(--gray-200);border-radius:7px;padding:8px 10px;font-size:12px;outline:none;width:100%}
+  .hl-form input:focus,.hl-form select:focus{border-color:var(--green)}
+  .hl-form label{font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;display:block}
+  .hl-add-btn{background:var(--green);color:#fff;border:none;border-radius:7px;padding:9px;font-size:12px;font-weight:700;cursor:pointer;width:100%}
+  .hl-add-btn:hover{background:var(--green-dark)}
+  .hl-table{width:100%;border-collapse:collapse;font-size:12px}
+  .hl-table th{background:var(--gray-50);padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--gray-200)}
+  .hl-table td{padding:8px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);vertical-align:middle}
+  .hl-table tr:last-child td{border-bottom:none}
+  .hl-table tr:hover td{background:var(--gray-50)}
+  .hl-del{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:5px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer}
+  .hl-del:hover{background:#fecaca}
+  .hl-badge-wknd{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af}
+  .hl-badge-hol{display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:#ede9fe;color:#5b21b6}
+  .hl-empty{text-align:center;padding:32px;color:var(--gray-400);font-size:12px}
+  .hm-cell{width:34px;min-width:34px;height:34px;text-align:center;vertical-align:middle;cursor:pointer;position:relative;transition:opacity .12s}
+  .hm-cell:hover{opacity:.75;outline:2px solid #333}
+  .hm-cell.c-ok{background:#bbf7d0}        /* green - full day */
+  .hm-cell.c-nc{background:#fed7aa}        /* orange - no checkout */
+  .hm-cell.c-lw{background:#fef08a}        /* yellow - less hours */
+  .hm-cell.c-lt{background:#fde68a}        /* amber - less than 8:45 */
+  .hm-cell.c-ab{background:#fecaca}        /* red - absent */
+  .hm-cell.c-na{background:#fff}           /* white - no data */
+  /* Weekend: blue-gray tint — status color still shows if worked */
+  .hm-cell.is-wknd{background:#dbeafe!important}  /* blue-100 if no data */
+  .hm-cell.is-wknd.c-ok{background:#bbf7d0!important}
+  .hm-cell.is-wknd.c-nc{background:#fed7aa!important}
+  .hm-cell.is-wknd.c-lt{background:#fde68a!important}
+  .hm-cell.is-wknd.c-lw{background:#fef08a!important}
+  .hm-cell.is-wknd.c-ab{background:#dbeafe!important} /* blue if absent on weekend = off */
+  .hm-cell.is-wknd::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(45deg,rgba(59,130,246,0.13) 0px,rgba(59,130,246,0.13) 2px,transparent 2px,transparent 6px);pointer-events:none}
+  /* Holiday: purple tint — status color if worked, purple if absent */
+  .hm-cell.is-holiday{background:#ede9fe!important}
+  .hm-cell.is-holiday.c-ok{background:#bbf7d0!important}
+  .hm-cell.is-holiday.c-nc{background:#fed7aa!important}
+  .hm-cell.is-holiday.c-lt{background:#fde68a!important}
+  .hm-cell.is-holiday.c-lw{background:#fef08a!important}
+  .hm-cell.is-holiday.c-ab{background:#ede9fe!important} /* purple if absent on holiday = off */
+  .hm-cell.is-holiday::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(-45deg,rgba(124,58,237,0.13) 0px,rgba(124,58,237,0.13) 2px,transparent 2px,transparent 6px);pointer-events:none}
+  .hm-cell-txt{font-size:8px;font-weight:700;color:rgba(0,0,0,0.45);line-height:1;position:relative;z-index:1}
+  /* Summary cols at end */
+  .hm-sum-head{min-width:42px;width:42px;text-align:center;padding:4px 2px!important;font-size:9px;font-weight:700;line-height:1.3}
+  .hm-sum-head.s-ok{background:#bbf7d0;color:#14532d}
+  .hm-sum-head.s-ab{background:#fecaca;color:#7f1d1d}
+  .hm-sum-head.s-nc{background:#fed7aa;color:#7c2d12}
+  .hm-sum-head.s-lw{background:#fef08a;color:#713f12}
+  .hm-sum-head.s-lt{background:#fde68a;color:#78350f}
+  .hm-sum-head.s-tot{background:#e0e7ff;color:#1e1b4b}
+  .hm-sum-cell{width:42px;min-width:42px;text-align:center;font-size:11px;font-weight:700;vertical-align:middle;height:34px}
+  .hm-sum-cell.s-ok{background:#f0fdf4;color:#15803d}
+  .hm-sum-cell.s-ab{background:#fef2f2;color:#dc2626}
+  .hm-sum-cell.s-nc{background:#fff7ed;color:#c2410c}
+  .hm-sum-cell.s-lw{background:#fefce8;color:#ca8a04}
+  .hm-sum-cell.s-lt{background:#fffbeb;color:#b45309}
+  .hm-sum-cell.s-tot{background:#eef2ff;color:#4338ca}
+  .hm-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--gray-200);font-size:11px}
+  .hm-legend-item{display:flex;align-items:center;gap:5px}
+  .hm-legend-box{width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,0.1)}
+  .hm-controls{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--gray-200);flex-wrap:wrap}
+  .hm-controls select,.hm-controls input{border:1px solid var(--gray-200);border-radius:7px;padding:5px 10px;font-size:12px;outline:none}
+  .hm-controls select:focus,.hm-controls input:focus{border-color:var(--green)}
+  .hm-tip{position:fixed;background:rgba(15,23,42,.92);color:#fff;font-size:11px;padding:7px 11px;border-radius:7px;pointer-events:none;z-index:9999;display:none;line-height:1.5;max-width:220px}
+
+  /* ══ SALES DASHBOARD ══ */
+  #sales-view{display:none;padding:20px}
+  #sales-view.active{display:block}
+
+  /* ── Headcount ── */
+  #headcount-view{display:none;padding:20px}
+  #headcount-view.active{display:block}
+  .hc-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+  .hc-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .hc-card::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%}
+  .hc-card .hc-val{font-size:26px;font-weight:800;color:var(--gray-800);line-height:1.1}
+  .hc-card .hc-lbl{font-size:11px;color:var(--gray-500);margin-top:4px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+  .hc-card .hc-sub{font-size:11px;color:var(--gray-400);margin-top:2px}
+  .hc-card.t-green::before{background:var(--green)}
+  .hc-card.t-blue::before{background:var(--blue)}
+  .hc-card.t-amber::before{background:var(--amber)}
+  .hc-card.t-purple::before{background:var(--purple)}
+  .hc-card.t-pink::before{background:#ec4899}
+  .hc-card.t-red::before{background:var(--red)}
+
+  .hc-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+  @media (max-width:980px){.hc-grid{grid-template-columns:1fr}}
+  .hc-panel{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+  .hc-panel-head{padding:13px 18px;border-bottom:1px solid var(--gray-100);font-size:13px;font-weight:700;color:var(--gray-700);display:flex;align-items:center;justify-content:space-between}
+  .hc-panel-head .hc-count{font-size:11px;font-weight:600;color:var(--gray-400)}
+  .hc-panel-body{padding:14px 18px}
+  .hc-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+  .hc-bar-row:last-child{margin-bottom:0}
+  .hc-bar-name{flex:0 0 130px;font-size:12px;color:var(--gray-600);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+  .hc-bar-name:hover{color:var(--green-dark);text-decoration:underline}
+  .hc-bar-track{flex:1;height:18px;background:var(--gray-100);border-radius:5px;overflow:hidden;position:relative}
+  .hc-bar-fill{height:100%;border-radius:5px;transition:width .4s ease;display:flex;align-items:center}
+  .hc-bar-val{flex:0 0 38px;text-align:right;font-size:12px;font-weight:700;color:var(--gray-700)}
+
+  .hc-donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
+  .hc-legend{display:flex;flex-direction:column;gap:7px}
+  .hc-legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--gray-600);cursor:pointer}
+  .hc-legend-item:hover{color:var(--gray-800)}
+  .hc-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+  .hc-legend-val{font-weight:700;color:var(--gray-800)}
+
+  .hc-table-wrap{overflow-x:auto}
+  .hc-table{width:100%;border-collapse:collapse;font-size:12px}
+  .hc-table th{background:var(--gray-50);color:var(--gray-500);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:9px 14px;text-align:left;border-bottom:1px solid var(--gray-200);white-space:nowrap;cursor:pointer}
+  .hc-table th:hover{color:var(--gray-700)}
+  .hc-table td{padding:9px 14px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);white-space:nowrap}
+  .hc-table tr:hover td{background:var(--gray-50)}
+  .hc-table td.num{text-align:right;font-weight:700}
+  .hc-pill-mini{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px}
+  .hc-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:18px;background:#fff;padding:14px 16px;border-radius:10px;border:1px solid var(--gray-200)}
+  .sd-toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:18px;background:#fff;padding:14px 16px;border-radius:10px;border:1px solid var(--gray-200)}
+  .sd-pill{font-size:11px;padding:3px 10px;border-radius:99px;font-weight:700;background:var(--green-light);color:var(--green-dark);border:1px solid var(--green)}
+  .sd-kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+  .sd-kpi{background:#fff;border:1px solid var(--gray-200);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+  .sd-kpi-label{font-size:10px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+  .sd-kpi-val{font-size:22px;font-weight:800;color:var(--gray-800);line-height:1.1}
+  .sd-kpi-sub{font-size:11px;color:var(--gray-400);margin-top:3px}
+  .sd-kpi-bar{position:absolute;bottom:0;left:0;height:3px;background:var(--green);border-radius:0 0 10px 10px}
+  .sd-section{background:#fff;border:1px solid var(--gray-200);border-radius:10px;margin-bottom:18px;overflow:hidden}
+  .sd-section-head{padding:13px 16px;border-bottom:1px solid var(--gray-100);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .sd-section-head h3{font-size:13px;font-weight:700;color:var(--gray-800);margin:0}
+  .sd-table-wrap{overflow-x:auto}
+  .sd-table{width:100%;border-collapse:collapse;font-size:11.5px}
+  /* Leaderboard: cols 1-6 left, rest center */
+  .sd-table.lb th,.sd-table.lb td{text-align:center}
+  .sd-table.lb th:nth-child(-n+6),.sd-table.lb td:nth-child(-n+6){text-align:left}
+  /* YoY: Year col left, rest center */
+  .sd-table.yoy th,.sd-table.yoy td{text-align:center}
+  .sd-table.yoy th:first-child,.sd-table.yoy td:first-child{text-align:left}
+  .sd-table th{background:var(--gray-800);color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;cursor:pointer;user-select:none}
+  .sd-table td{padding:7px 10px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);white-space:nowrap}
+  .sd-table tr:last-child td{border-bottom:none}
+  .sd-table tr:hover td{background:var(--gray-50)}
+  .sd-table .total-row td{background:var(--gray-800);color:#fff;font-weight:700}
+  .sd-badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700}
+  .sd-badge.g{background:var(--green-light);color:var(--green-dark)}
+  .sd-badge.r{background:var(--red-light);color:#991b1b}
+  .sd-badge.a{background:var(--amber-light);color:#92400e}
+  .sd-no-data{text-align:center;padding:48px 20px;color:var(--gray-400)}
+  .sd-no-data .eico{font-size:32px;margin-bottom:8px}
+  .sd-score{font-size:13px;font-weight:800}
+  .sd-score.hi{color:var(--green-dark)} .sd-score.mid{color:var(--amber)} .sd-score.lo{color:var(--red)}
+  .sd-url-row{display:flex;gap:8px;align-items:center;padding:12px 16px;background:var(--gray-50);border-top:1px solid var(--gray-200)}
+  /* Multi-select checkbox dropdown */
+  .ms-wrap{position:relative;display:inline-block}
+  .ms-btn{display:flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid var(--gray-200);border-radius:7px;background:#fff;font-size:12px;color:var(--gray-700);cursor:pointer;white-space:nowrap;min-height:30px;min-width:100px;max-width:200px}
+  .ms-btn:hover{border-color:var(--green);background:var(--green-light)}
+  .ms-btn .ms-arrow{margin-left:auto;font-size:9px;color:var(--gray-400)}
+  .ms-btn .ms-count{background:var(--green);color:#fff;border-radius:99px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:2px}
+  .ms-dropdown{position:absolute;top:calc(100% + 4px);left:0;z-index:9999;background:#fff;border:1px solid var(--gray-200);border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:200px;max-width:280px;max-height:280px;overflow-y:auto;display:none}
+  .ms-dropdown.open{display:block}
+  .ms-search{padding:8px 10px;border-bottom:1px solid var(--gray-100)}
+  .ms-search input{width:100%;border:1px solid var(--gray-200);border-radius:6px;padding:4px 8px;font-size:11px;outline:none}
+  .ms-item{display:flex;align-items:center;gap:8px;padding:6px 12px;font-size:12px;color:var(--gray-700);cursor:pointer;transition:background .12s}
+  .ms-item:hover{background:var(--gray-50)}
+  .ms-item input[type=checkbox]{accent-color:var(--green);width:13px;height:13px;cursor:pointer;flex-shrink:0}
+  .ms-item label{cursor:pointer;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ms-actions{display:flex;gap:6px;padding:7px 10px;border-top:1px solid var(--gray-100);background:var(--gray-50)}
+  .ms-actions button{flex:1;font-size:11px;padding:3px 6px;border-radius:5px;border:1px solid var(--gray-200);cursor:pointer;background:#fff;color:var(--gray-700)}
+  .ms-actions button:hover{background:var(--green-light);border-color:var(--green);color:var(--green-dark)}
+  /* YoY growth chip */
+  .yoy-up{color:#15803d;font-weight:700;font-size:10px}
+  .yoy-dn{color:#dc2626;font-weight:700;font-size:10px}
+  .yoy-na{color:var(--gray-400);font-size:10px}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- LOGIN SCREEN                                   -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">JCB</div>
+    <div class="login-title">Employee Attendance &amp; Performance</div>
+    <div class="login-sub">Zenoti · Sign in to continue</div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Enter username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In →</button>
+    <div class="login-err" id="login-err">Incorrect username or password.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- FORCE PASSWORD CHANGE SCREEN (first login)     -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="pwchange-screen" class="hidden">
+  <div class="login-box">
+    <div class="login-logo">JCB</div>
+    <div class="login-title">Set a New Password</div>
+    <div class="login-sub">For security, please change your default password before continuing.</div>
+    <div class="login-field">
+      <label>New Password</label>
+      <input type="password" id="pwchange-new" placeholder="Enter new password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doForcePasswordChange()"/>
+    </div>
+    <div class="login-field">
+      <label>Confirm New Password</label>
+      <input type="password" id="pwchange-confirm" placeholder="Re-enter new password" autocomplete="new-password" onkeydown="if(event.key==='Enter')doForcePasswordChange()"/>
+    </div>
+    <button class="login-btn" onclick="doForcePasswordChange()">Save &amp; Continue →</button>
+    <div class="login-err" id="pwchange-err">Passwords do not match or are too short.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════ -->
+<!-- USER MANAGEMENT SCREEN (Super Admin only)      -->
+<!-- ══════════════════════════════════════════════ -->
+<div id="um-screen">
+  <div class="um-header">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo">JCB</div>
+      <h1>👥 User Management</h1>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="ubtn ubtn-secondary" onclick="closeUM()">← Back to Dashboard</button>
+      <button class="ubtn ubtn-danger" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+  <div class="um-body">
+
+    <!-- Create / Edit User -->
+    <div class="um-section">
+      <div class="um-section-head">
+        <h2 id="um-form-title">➕ Create New User</h2>
+        <button class="ubtn ubtn-secondary" id="um-cancel-edit" onclick="resetUMForm()" style="display:none">✕ Cancel Edit</button>
+      </div>
+      <div class="um-form">
+        <div class="uf">
+          <label>Username</label>
+          <input type="text" id="um-username" placeholder="e.g. john_doe"/>
+        </div>
+        <div class="uf">
+          <label>Password</label>
+          <input type="password" id="um-password" placeholder="Leave blank = default jcbounce@123"/>
+        </div>
+        <div class="uf">
+          <label>Full Name</label>
+          <input type="text" id="um-fullname" placeholder="e.g. John Doe"/>
+        </div>
+        <div class="uf">
+          <label>Role</label>
+          <select id="um-role">
+            <option value="user">User (restricted)</option>
+            <option value="admin">Super Admin (full access)</option>
+          </select>
+        </div>
+        <div class="uf">
+          <label>Brand Access</label>
+          <select id="um-brand" onchange="renderUMCenters()">
+            <option value="both">Both Brands</option>
+            <option value="JCB">JCB Only</option>
+            <option value="Bounce">Bounce Only</option>
+          </select>
+        </div>
+        <div class="uf">
+          <label>Download (CSV)</label>
+          <select id="um-download">
+            <option value="yes">✅ Allowed</option>
+            <option value="no">❌ Not Allowed</option>
+          </select>
+        </div>
+        <div class="uf">
+          <label>Sales Sheet URL Visible</label>
+          <select id="um-salesurl">
+            <option value="no">🔒 Hidden (users see data only)</option>
+            <option value="yes">👁 Visible</option>
+          </select>
+        </div>
+      </div>
+      <div style="padding:0 18px 14px">
+        <div class="uf">
+          <label>Center Access <span style="font-weight:400;text-transform:none;color:var(--gray-400)">(leave all unchecked = access to ALL centers)</span></label>
+          <div class="um-centers-grid" id="um-centers-grid"></div>
+        </div>
+      </div>
+      <div class="um-actions">
+        <button class="ubtn ubtn-primary" onclick="saveUser()">💾 Save User</button>
+      </div>
+    </div>
+
+    <!-- Online Storage Config -->
+    <div class="um-section">
+      <div class="um-section-head">
+        <h2>🌐 Online User Storage (Apps Script)</h2>
+        <span id="um-sync-status" style="font-size:11px;color:var(--gray-400)"></span>
+      </div>
+      <div style="padding:16px 18px">
+        <p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">
+          Users are stored as a <strong>table</strong> (one row per user) in the <code>DashboardUsers</code> sheet via Apps Script, so they persist across all browsers/devices and are readable directly in Sheets.
+          This MUST be the same Apps Script project that serves Sales/HRMASTER/Employees — one unified <code>doGet</code>/<code>doPost</code>, no duplicates. See the full <code>Code.gs</code> file provided separately; paste it whole into Extensions → Apps Script, replacing everything there.
+        </p>
+        <div style="background:var(--gray-800);color:#a5f3c4;border-radius:8px;padding:14px;font-size:11px;font-family:monospace;line-height:1.9;margin-bottom:14px;white-space:pre-wrap">// ── This is a SUMMARY only — paste the full Code.gs file (provided ──
+// ── alongside this dashboard) into ONE Apps Script project.         ──
+// Deploy as: Web App · Execute as: Me · Who has access: Anyone
+// Then paste the same /exec URL here AND in the top "Apps Script URL" box.
+
+// doGet handles: ?action=list (users) · ?action=sales&url=... (proxy)
+//                ?action=hrmaster · ?action=employees
+// doPost handles: {action:'save', users:[...]}  → writes DashboardUsers
+//                  sheet as ONE ROW PER USER (Username, Password, FullName,
+//                  Role, Brand, Centers, Download, SalesURL,
+//                  MustChangePassword, LastPasswordChange)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="um-script-url" placeholder="https://script.google.com/macros/s/…/exec"
+            style="flex:1;border:1px solid var(--gray-200);border-radius:7px;padding:7px 10px;font-size:12px;outline:none;font-family:monospace"
+            value=""/>
+          <button class="ubtn ubtn-primary" onclick="saveUserMgmtUrl()" style="white-space:nowrap">💾 Save URL</button>
+          <button class="ubtn ubtn-secondary" onclick="testUserMgmtUrl()" style="white-space:nowrap">🔍 Test</button>
+        </div>
+        <p style="font-size:11px;color:var(--gray-400);margin-top:8px">
+          The URL is saved in your browser. Once set, all user changes sync to the Sheet automatically.
+        </p>
+      </div>
+    </div>
+
+    <!-- Users List -->
+    <div class="um-section">
+      <div class="um-section-head">
+        <h2>👤 All Users</h2>
+        <span id="um-user-count" style="font-size:11px;color:var(--gray-400)"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Full Name</th>
+              <th>Role</th>
+              <th>Brand</th>
+              <th>Centers</th>
+              <th>Download</th>
+              <th>Sales URL</th>
+              <th>Password</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="um-tbody">
+            <tr><td colspan="9"><div class="um-empty">No users yet. Create one above.</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand">
+    <div class="logo">JCB</div>
+    <div class="brand-text">
+      <div class="t1">Employee Attendance &amp; Performance</div>
+      <div class="t2">Zenoti · Real-time</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="user-pill" id="user-pill">
+      <div class="avatar" id="user-avatar">?</div>
+      <span id="user-display-name">—</span>
+    </div>
+    <span id="emp-pill">👤 Loading employees…</span>
+    <button class="hbtn" id="load-emp-btn" onclick="loadEmployeesFromSheet()" title="Re-fetch employee list from Google Sheet">🔄 Reload Employees</button>
+    <button class="hbtn hbtn-admin" id="admin-btn" onclick="openUM()" style="display:none">⚙ Manage Users</button>
+    <button class="hbtn" id="fetch-btn" onclick="fetchAttendance()">⬇ Fetch Attendance</button>
+    <button class="hbtn hbtn-logout" onclick="doLogout()">↩ Sign Out</button>
+  </div>
+</div>
+
+<!-- Controls bar -->
+<div class="controls-bar">
+
+  <div class="cg">
+    <label>Quick Select</label>
+    <div class="quick-btns">
+      <button class="qbtn" onclick="setQuick('today',this)">Today</button>
+      <button class="qbtn" onclick="setQuick('yesterday',this)">Yesterday</button>
+      <button class="qbtn" onclick="setQuick('week',this)">Last 7 Days</button>
+      <button class="qbtn active" onclick="setQuick('month',this)">This Month</button>
+      <button class="qbtn" onclick="setQuick('lastmonth',this)">Last Month</button>
+      <button class="qbtn" onclick="setQuick('quarter',this)">This Quarter</button>
+    </div>
+  </div>
+
+  <div class="cg">
+    <label>Date Range <span style="font-weight:400;text-transform:none">(max 90 days)</span></label>
+    <div class="dr-wrap">
+      <input type="date" id="start-date"/>
+      <span>→</span>
+      <input type="date" id="end-date"/>
+    </div>
+  </div>
+
+  <div class="controls-divider"></div>
+
+  <div class="cg">
+    <label>Fetch by Center</label>
+    <select id="center-select-ctrl">
+      <option value="">All Centers</option>
+    </select>
+  </div>
+
+  <div class="controls-divider"></div>
+
+  <div class="cg">
+    <label>Search Employee</label>
+    <input type="text" id="search-emp" placeholder="Code or name…" oninput="applyFilters()"/>
+  </div>
+
+</div>
+
+<!-- Progress -->
+<div id="prog-wrap">
+  <div class="prog-row">
+    <span id="prog-text">Fetching…</span>
+    <span id="prog-pct">0%</span>
+  </div>
+  <div class="prog-bg"><div class="prog-fill" id="prog-fill"></div></div>
+</div>
+
+<div class="banner err" id="err-banner"></div>
+
+<div class="app">
+  <div class="main">
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="sc c-green"><div class="sico">✅</div><div class="sval" id="s-present">—</div><div class="slbl">Present (Full Day)</div></div>
+      <div class="sc c-red"><div class="sico">❌</div><div class="sval" id="s-absent">—</div><div class="slbl">No Attendance</div></div>
+      <div class="sc c-amber" style="--amber:#f97316"><div class="sico">🚪</div><div class="sval" id="s-nocheckout">—</div><div class="slbl">No Checkout</div></div>
+      <div class="sc c-yellow"><div class="sico">⏱</div><div class="sval" id="s-less">—</div><div class="slbl">Less Working Hrs</div></div>
+      <div class="sc c-amber"><div class="sico">⚠️</div><div class="sval" id="s-late">—</div><div class="slbl">Less than 8:45</div></div>
+      <div class="sc c-blue"><div class="sico">👤</div><div class="sval" id="s-emps">—</div><div class="slbl">Unique Employees</div></div>
+      <div class="sc c-gray"><div class="sico">📋</div><div class="sval" id="s-total">—</div><div class="slbl">Total Records</div></div>
+    </div>
+
+    <!-- Table -->
+    <div class="tcard">
+      <!-- View Tabs -->
+      <div class="view-tabs">
+        <button class="vtab active" id="vtab-table" onclick="switchView('table')">📋 Attendance Records</button>
+        <button class="vtab" id="vtab-heatmap" onclick="switchView('heatmap')">📅 Calendar Heatmap</button>
+        <button class="vtab" id="vtab-sales" onclick="switchView('sales')">📊 Sales Productivity</button>
+        <button class="vtab" id="vtab-headcount" onclick="switchView('headcount')">👥 Headcount</button>
+      </div>
+
+      <!-- ── TABLE VIEW ── -->
+      <div id="table-view">
+      <div class="thead-bar">
+        <h3>Attendance Records</h3>
+        <div class="thead-right">
+          <select class="tf" id="f-brand" onchange="applyFilters()">
+            <option value="">All Brands</option>
+            <option value="JCB">JCB</option>
+            <option value="Bounce">Bounce</option>
+          </select>
+          <select class="tf" id="f-center" onchange="applyFilters()"><option value="">All Centers</option></select>
+          <select class="tf" id="f-status" onchange="applyFilters()">
+            <option value="">All Status</option>
+            <option value="ok">✅ Full Day</option>
+            <option value="No Checkout">🚪 No Checkout</option>
+            <option value="Less than 8:45">⚠ Less than 8:45</option>
+            <option value="Less working hours">⏱ Less working hours</option>
+            <option value="No Attendance">❌ No Attendance</option>
+          </select>
+          <span class="rec-count" id="rec-count">0 records</span>
+          <button id="dl-btn" onclick="downloadCSV()">⬇ CSV</button>
+        </div>
+      </div>
+      <div class="banner info" id="info-banner"></div>
+      <div class="twrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortBy('brand')">Brand <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('centerCode')">Center Code <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('centerName')">Center Name <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('employeeCode')">Emp Code <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('employeeName')">Employee Name <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('jobTitle')">Job Title <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('month')">Month <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('date')">Date <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('day')">Day <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('checkin')">Check In <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('checkout')">Check Out <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('workMinutes')">Working Hrs <span class="sort-arrow">↕</span></th>
+              <th onclick="sortBy('status')">Status <span class="sort-arrow">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="12"><div class="empty-s">
+              <div class="eico">📅</div>
+              <h4>No data yet</h4>
+              <p>Select a date range and click <strong>Fetch Attendance</strong></p>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pgn" id="pgn" style="display:none">
+        <div class="pgn-info" id="pgn-info"></div>
+        <div class="pgn-btns" id="pgn-btns"></div>
+      </div>
+      </div><!-- end table-view -->
+
+      <!-- ── HEATMAP VIEW ── -->
+      <div id="heatmap-view">
+        <div class="hm-controls">
+          <select id="hm-brand" onchange="renderHeatmap()">
+            <option value="">All Brands</option>
+            <option value="JCB">JCB</option>
+            <option value="Bounce">Bounce</option>
+          </select>
+          <select id="hm-center" onchange="renderHeatmap()">
+            <option value="">All Centers</option>
+          </select>
+          <input type="text" id="hm-search" placeholder="Search employee…" oninput="renderHeatmap()" style="width:160px"/>
+          <button onclick="downloadHeatmapCSV()" id="hm-dl-btn" style="background:var(--green);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">⬇ CSV</button>
+          <span id="hm-count" style="font-size:11px;color:var(--gray-400);margin-left:4px"></span>
+        </div>
+        <div class="hm-wrap">
+          <div id="hm-body">
+            <div style="text-align:center;padding:48px;color:var(--gray-400)">
+              <div style="font-size:32px">📅</div>
+              <div style="margin-top:8px;font-size:13px">Fetch attendance data first, then switch to this view.</div>
+            </div>
+          </div>
+        </div>
+        <div class="hm-legend">
+          <strong style="font-size:11px;color:var(--gray-600)">Legend:</strong>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#bbf7d0"></div> Full Day</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#fed7aa"></div> No Checkout</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#fde68a"></div> Less than 8:45</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#fef08a"></div> Less Working Hrs</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#fecaca"></div> No Attendance</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#dbeafe;background-image:repeating-linear-gradient(45deg,rgba(59,130,246,0.2) 0px,rgba(59,130,246,0.2) 2px,transparent 2px,transparent 6px)"></div> Weekend (Sat/Sun)</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#ede9fe;background-image:repeating-linear-gradient(-45deg,rgba(124,58,237,0.2) 0px,rgba(124,58,237,0.2) 2px,transparent 2px,transparent 6px)"></div> Holiday</div>
+          <div class="hm-legend-item"><div class="hm-legend-box" style="background:#fff;border:1px solid #ccc"></div> No Data</div>
+        </div>
+      </div><!-- end heatmap-view -->
+
+      <!-- ── HOLIDAY MANAGER VIEW ── -->
+      <div id="holiday-view">
+        <div class="hl-grid">
+
+          <!-- Add Holiday Form -->
+          <div class="hl-card">
+            <div class="hl-card-head">➕ Add Holiday / Off Day</div>
+            <div class="hl-form">
+              <div>
+                <label>Date</label>
+                <input type="date" id="hl-date"/>
+              </div>
+              <div>
+                <label>Holiday Name</label>
+                <input type="text" id="hl-name" placeholder="e.g. Diwali, Republic Day…"/>
+              </div>
+              <div>
+                <label>Type</label>
+                <select id="hl-type">
+                  <option value="holiday">🎌 Holiday (all staff off)</option>
+                  <option value="optional">📌 Optional Holiday</option>
+                </select>
+              </div>
+              <div>
+                <label>Applicable To</label>
+                <select id="hl-brand">
+                  <option value="both">Both Brands</option>
+                  <option value="JCB">JCB Only</option>
+                  <option value="Bounce">Bounce Only</option>
+                </select>
+              </div>
+              <button class="hl-add-btn" onclick="addHoliday()">➕ Add to Holiday List</button>
+            </div>
+            <div style="padding:0 16px 12px;font-size:11px;color:var(--gray-400)">
+              💡 Weekend (Sat/Sun) are automatically marked in <span style="color:#1e40af;font-weight:700">blue</span>.<br>
+              Holidays you add here show in <span style="color:#5b21b6;font-weight:700">purple</span> in the heatmap.<br>
+              Absent on weekends/holidays won't count in summary.
+            </div>
+          </div>
+
+          <!-- Holiday List Table -->
+          <div class="hl-card">
+            <div class="hl-card-head">
+              🗓 Holiday List
+              <div style="display:flex;gap:6px">
+                <select id="hl-filter-year" onchange="renderHolidayTable()" style="border:1px solid var(--gray-200);border-radius:6px;padding:3px 8px;font-size:11px;outline:none"></select>
+                <button onclick="clearAllHolidays()" style="background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer">🗑 Clear All</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+              <table class="hl-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Day</th>
+                    <th>Holiday Name</th>
+                    <th>Type</th>
+                    <th>Brand</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="hl-tbody">
+                  <tr><td colspan="6"><div class="hl-empty">No holidays added yet.</div></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- end holiday-view -->
+
+      <!-- ── SALES VIEW ── -->
+      <div id="sales-view">
+        <div class="sd-toolbar">
+          <!-- Row 1: URL (admin/permitted only) -->
+          <div id="sd-url-row" class="cg" style="flex-basis:100%;min-width:100%">
+            <label class="cl">Sales Sheet URL (pub CSV)</label>
+            <div style="display:flex;gap:6px;align-items:center">
+              <input type="text" id="sd-sheet-url" placeholder="Google Sheet published CSV URL for Sales sheet" style="width:480px;border:1px solid var(--gray-200);border-radius:7px;padding:6px 10px;font-size:12px;outline:none;font-family:monospace"/>
+              <button class="hbtn" style="background:var(--green);color:#fff" onclick="sdSaveUrl()">💾 Save</button>
+              <button class="hbtn" style="background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd" onclick="loadSalesData()">🔄 Load</button>
+              <span id="sd-status" class="sd-pill" style="display:none"></span>
+            </div>
+            <span style="font-size:10px;color:var(--gray-400)">Google Sheet → File → Share → Publish to web → select the <strong>Sales</strong> sheet → CSV → Publish → copy the link</span>
+          </div>
+          <!-- Row 2: Multi-select filters -->
+          <div class="cg">
+            <label class="cl">Brand</label>
+            <div class="ms-wrap" id="ms-brand">
+              <div class="ms-btn" onclick="toggleMs('ms-brand')"><span class="ms-label">All Brands</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-actions"><button onclick="msSelectAll('ms-brand')">All</button><button onclick="msClearAll('ms-brand')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Salon</label>
+            <div class="ms-wrap" id="ms-salon">
+              <div class="ms-btn" onclick="toggleMs('ms-salon')"><span class="ms-label">All Salons</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Search…" oninput="msFilter(this,'ms-salon')"/></div><div class="ms-actions"><button onclick="msSelectAll('ms-salon')">All</button><button onclick="msClearAll('ms-salon')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Designation</label>
+            <div class="ms-wrap" id="ms-desig">
+              <div class="ms-btn" onclick="toggleMs('ms-desig')"><span class="ms-label">All Designations</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Search…" oninput="msFilter(this,'ms-desig')"/></div><div class="ms-actions"><button onclick="msSelectAll('ms-desig')">All</button><button onclick="msClearAll('ms-desig')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Category (Hair/Skin)</label>
+            <div class="ms-wrap" id="ms-haircat">
+              <div class="ms-btn" onclick="toggleMs('ms-haircat')"><span class="ms-label">All Categories</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-actions"><button onclick="msSelectAll('ms-haircat')">All</button><button onclick="msClearAll('ms-haircat')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Employee</label>
+            <div class="ms-wrap" id="ms-emp">
+              <div class="ms-btn" onclick="toggleMs('ms-emp')"><span class="ms-label">All Employees</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Search…" oninput="msFilter(this,'ms-emp')"/></div><div class="ms-actions"><button onclick="msSelectAll('ms-emp')">All</button><button onclick="msClearAll('ms-emp')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Year</label>
+            <div class="ms-wrap" id="ms-year">
+              <div class="ms-btn" onclick="toggleMs('ms-year')"><span class="ms-label">All Years</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-actions"><button onclick="msSelectAll('ms-year')">All</button><button onclick="msClearAll('ms-year')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Month</label>
+            <div class="ms-wrap" id="ms-month">
+              <div class="ms-btn" onclick="toggleMs('ms-month')"><span class="ms-label">All Months</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-actions"><button onclick="msSelectAll('ms-month')">All</button><button onclick="msClearAll('ms-month')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Metric</label>
+            <select class="tf" id="sd-metric" onchange="renderSalesDashboard()" style="min-width:160px">
+              <option value="SERVICE SALES">Service Sales</option>
+              <option value="SERVICE ABV">Service ABV</option>
+              <option value="NEW CLIENTS SERVICES">New Clients</option>
+              <option value="EXISTING CLIENTS SERVICES">Existing Clients</option>
+              <option value="TOTAL CLIENTS SERVICES">Total Clients (Services)</option>
+              <option value="PRODUCT SALES">Product Sales</option>
+              <option value="PRODUCT ABV">Product ABV</option>
+              <option value="TOTAL CLIENTS PRODUCT">Total Clients (Product)</option>
+              <option value="3 MONTH REPEAT CLIENTS">3M Repeat Clients</option>
+              <option value="RETENTION %">Retention %</option>
+            </select>
+          </div>
+          <div class="cg" style="justify-content:flex-end">
+            <label class="cl">Show % Growth</label>
+            <label style="display:flex;align-items:center;gap:7px;cursor:pointer;height:32px">
+              <div id="toggle-growth" onclick="toggleGrowthRows()" style="width:40px;height:22px;border-radius:99px;background:var(--green);position:relative;transition:background .2s;cursor:pointer">
+                <div id="toggle-thumb" style="width:18px;height:18px;background:#fff;border-radius:99px;position:absolute;top:2px;left:20px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+              </div>
+              <span id="toggle-growth-label" style="font-size:12px;color:var(--gray-600);font-weight:500">On</span>
+            </label>
+          </div>
+        </div>
+
+        <div id="sd-body">
+          <div class="sd-no-data"><div class="eico">📊</div><p>Configure the Sales sheet URL above and click <strong>Load</strong></p></div>
+        </div>
+      </div>
+
+      <!-- ── HEADCOUNT VIEW ── -->
+      <div id="headcount-view">
+        <div class="hc-toolbar">
+          <div class="cg">
+            <label class="cl">Brand</label>
+            <div class="ms-wrap" id="ms-hc-brand">
+              <div class="ms-btn" onclick="toggleMs('ms-hc-brand')"><span class="ms-label">All Brands</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-actions"><button onclick="msSelectAll('ms-hc-brand')">All</button><button onclick="msClearAll('ms-hc-brand')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Salon / Center</label>
+            <div class="ms-wrap" id="ms-hc-salon">
+              <div class="ms-btn" onclick="toggleMs('ms-hc-salon')"><span class="ms-label">All Salons</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Search…" oninput="msFilter(this,'ms-hc-salon')"/></div><div class="ms-actions"><button onclick="msSelectAll('ms-hc-salon')">All</button><button onclick="msClearAll('ms-hc-salon')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">Department</label>
+            <div class="ms-wrap" id="ms-hc-dept">
+              <div class="ms-btn" onclick="toggleMs('ms-hc-dept')"><span class="ms-label">All Departments</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Search…" oninput="msFilter(this,'ms-hc-dept')"/></div><div class="ms-actions"><button onclick="msSelectAll('ms-hc-dept')">All</button><button onclick="msClearAll('ms-hc-dept')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg">
+            <label class="cl">City</label>
+            <div class="ms-wrap" id="ms-hc-city">
+              <div class="ms-btn" onclick="toggleMs('ms-hc-city')"><span class="ms-label">All Cities</span><span class="ms-arrow">▼</span></div>
+              <div class="ms-dropdown"><div class="ms-search"><input type="text" placeholder="Search…" oninput="msFilter(this,'ms-hc-city')"/></div><div class="ms-actions"><button onclick="msSelectAll('ms-hc-city')">All</button><button onclick="msClearAll('ms-hc-city')">None</button></div><div class="ms-list"></div></div>
+            </div>
+          </div>
+          <div class="cg" style="justify-content:flex-end;margin-left:auto">
+            <span id="hc-status" class="sd-pill" style="display:none"></span>
+            <button class="hbtn" style="background:var(--purple-light);color:var(--purple);border:1px solid #c4b5fd" onclick="loadHeadcountData()">🔄 Reload</button>
+          </div>
+        </div>
+
+        <div id="hc-body">
+          <div class="sd-no-data"><div class="eico">👥</div><p>Loading headcount data…</p></div>
+        </div>
+      </div>
+
+
+    </div><!-- end tcard -->
+
+  </div>
+</div>
+
+
+
+<!-- Employee Modal -->
+<div class="modal-overlay" id="emp-modal" onclick="if(event.target===this)closeEmpModal()">
+  <div class="modal">
+    <div class="mhead">
+      <div class="mhead-text">
+        <h2>👥 Load Employee Data</h2>
+        <p>Employee names can't be fetched directly from a local HTML file due to browser security.<br>Choose one of the two options below.</p>
+      </div>
+      <button class="mclose" onclick="closeEmpModal()">✕</button>
+    </div>
+    <div class="mbody">
+      <div class="mtabs">
+        <button class="mtab active" onclick="switchTab('paste',this)">📋 Option 1 — Paste from Sheet</button>
+        <button class="mtab" onclick="switchTab('script',this)">⚡ Option 2 — Apps Script (one-time setup)</button>
+      </div>
+
+      <!-- Tab 1: Paste -->
+      <div class="mtab-panel active" id="tab-paste">
+        <div class="step"><div class="stepn">1</div><div class="stept">Open your Google Sheet → go to the <strong>Employees</strong> tab → press <code>Ctrl+A</code> then <code>Ctrl+C</code></div></div>
+        <div class="step"><div class="stepn">2</div><div class="stept">Click the box below and press <code>Ctrl+V</code> to paste, then click <strong>Load</strong></div></div>
+        <textarea id="paste-area" placeholder="Paste your Employees sheet data here (Ctrl+V)…"></textarea>
+        <div class="paste-result" id="paste-result"></div>
+      </div>
+
+      <!-- Tab 2: Apps Script -->
+      <div class="mtab-panel" id="tab-script">
+        <div class="step"><div class="stepn">1</div><div class="stept">Use the <strong>same unified Apps Script project</strong> that already serves Users/Sales/HRMASTER — do <strong>not</strong> create a second separate script, or you'll get a <code>doGet</code> conflict again.</div></div>
+        <div class="step"><div class="stepn">2</div><div class="stept">That script's <code>doGet</code> already returns the Employees sheet as CSV by default (no <code>action</code> parameter needed), and also supports <code>?action=employees</code> explicitly.</div></div>
+        <div class="code-block">// Already included in your unified Code.gs:
+function doGet(e) {
+  const action = (e.parameter.action || '').toLowerCase();
+  if (action === 'list')      return /* DashboardUsers as table */;
+  if (action === 'sales')     return /* CSV proxy */;
+  if (action === 'hrmaster')  return /* HRMASTER as CSV */;
+  if (action === 'employees') return /* Employees as CSV */;
+  // default: Employees as CSV
+}</div>
+        <div class="step"><div class="stepn">3</div><div class="stept">Paste that single deployment's URL below — it's saved in your browser for next time</div></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <input class="url-input" id="apps-script-url-input" placeholder="https://script.google.com/macros/s/…/exec" value=""/>
+          <button class="mbtn mbtn-ok" onclick="saveAppsScriptUrl()" style="white-space:nowrap">💾 Save URL</button>
+          <span class="saved-tag" id="script-url-saved">✓ Saved!</span>
+        </div>
+        <p style="font-size:11px;color:var(--gray-400);margin-top:8px">Once saved, click <strong>🔄 Reload Employees</strong> in the header — it will auto-fetch every time.</p>
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="mbtn mbtn-cancel" onclick="closeEmpModal()">Close</button>
+      <button class="mbtn mbtn-ok" id="paste-load-btn" onclick="processPaste()">✓ Load from Paste</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Account 1: JCB ──
+const ACCT1 = {
+  url:  "https://jcb.zenoti.com/api/v100/services/integration/attendance.aspx",
+  user: "api_attendance",
+  pass: "zenoti@support",
+  acct: "jcb",
+  brand: "JCB"
+};
+
+// ── Account 2: Bounce (api key: 05c61d9006744f0090578a911941497e4afa684d9f454fb19d4449b27f49cd81) ──
+const ACCT2 = {
+  url:  "https://bounce.zenoti.com/api/v100/services/integration/attendance.aspx",
+  user: "api_attendance",
+  pass: "zenoti@support",
+  acct: "bounce",
+  brand: "Bounce",
+  apiKey: "05c61d9006744f0090578a911941497e4afa684d9f454fb19d4449b27f49cd81"
+};
+
+const EMP_BASE = "https://api.zenoti.com/v1/centers"; // kept for reference
+const CHUNK    = 6;
+const PG_SIZE  = 100;
+
+// ── Centers master — Account 1 (JCB) ──
+const CENTERS_JCB = [
+  {id:"e29d48ff-bd25-4ecd-9989-56d3077f1ac0",name:"Lokhandwala",code:"LKW",brand:"JCB"},
+  {id:"304d772a-0708-4a01-b278-a561d6c50ddc",name:"Lavelle Road",code:"BLO",brand:"JCB"},
+  {id:"a20c0010-1cf5-4d20-9586-1a155aa715ea",name:"Juhu",code:"JUH",brand:"JCB"},
+  {id:"2e5b34a4-9868-4913-8326-9a7d0b980d0d",name:"Rcity",code:"GTK",brand:"JCB"},
+  {id:"3cc123c2-a27b-4ab1-987f-29b3558485c2",name:"Warehouse - FRIN",code:"WHF",brand:"JCB"},
+  {id:"68184834-108d-44a3-97e0-1f71ffc96787",name:"Warehouse - JCB",code:"NTC",brand:"JCB"},
+  {id:"548af654-4a3d-423a-a859-11b4165b07d3",name:"Palladium",code:"LP",brand:"JCB"},
+  {id:"97bd7019-13c7-472d-b038-3662374d5a0f",name:"Kemps Corner",code:"KC",brand:"JCB"},
+  {id:"125fa141-3e4d-487d-b3e1-1769ed7bbaa6",name:"Bandra Pali",code:"BDR",brand:"JCB"},
+  {id:"b830b761-052b-4d12-98e5-da594233ef6d",name:"Khar West",code:"KHR",brand:"JCB"},
+  {id:"f7f8838a-714c-4722-8da4-8cca463bc94b",name:"Head Office",code:"HO",brand:"JCB"},
+  {id:"73fc3507-269c-479b-8b5b-1f6e7b7b246f",name:"Indiranagar",code:"BIN",brand:"JCB"},
+  {id:"8bdfd60d-2f3a-4062-9147-3a7353660d0c",name:"Koramangala",code:"BKM",brand:"JCB"},
+  {id:"d8d4dcbb-5b1e-447d-9ce2-f630c29e8b97",name:"Powai",code:"POW",brand:"JCB"},
+  {id:"836fc9a2-3d1e-4437-a637-fa77b079b87d",name:"Academy",code:"ACA",brand:"JCB"},
+  {id:"5f888e28-4e82-4433-bf8b-c0f6c3979569",name:"Prabhadevi",code:"PDM",brand:"JCB"},
+  {id:"42ea0a56-2cad-4f64-90b3-ff431b621fa6",name:"Bangalore JCB WH",code:"BJWH",brand:"JCB"},
+  {id:"119b4fe0-f0f4-4ec1-80b5-51e63892d208",name:"Bangalore FRIN WH",code:"BFWH",brand:"JCB"},
+  {id:"5b8c2a42-0a7d-4212-9855-f13dabc14693",name:"Chembur",code:"CHM",brand:"JCB"},
+  {id:"2f110944-8928-496d-9045-098e601ab163",name:"Kamala Mills",code:"KML",brand:"JCB"},
+  {id:"43bfbc9f-42b6-43fd-934a-f588eb19b51d",name:"Kandivali",code:"KDV",brand:"JCB"},
+  {id:"4361b1a7-7f4d-4b4f-9772-e176f3885ab3",name:"Aundh",code:"AUN",brand:"JCB"},
+  {id:"77264163-e4e1-4366-b828-b83efeb8709d",name:"Bandra-Kurla Complex",code:"BKC",brand:"JCB"},
+  {id:"d086a2ec-3bbb-472c-90c2-b3d00161e8f4",name:"JCB Bhopal",code:"BHO",brand:"JCB"},
+  {id:"f2ed6b3e-378b-4ab2-a015-d551b0be3cbc",name:"Kopa",code:"KOPA",brand:"JCB"},
+  {id:"4e16cfdb-24f4-46c2-a56b-8f7ffe54ff19",name:"Wakad",code:"WAK",brand:"JCB"},
+  {id:"edec7ad0-1769-4149-817d-49113c65e4a2",name:"Oberoi Mall",code:"OBR",brand:"JCB"},
+  {id:"174bba2e-e4b4-4c99-93ca-5acb21ebf2cc",name:"GC Trf Control",code:"GCTC",brand:"JCB"}
+];
+
+// ── Centers master — Account 2 (Bounce) ──
+const CENTERS_BOUNCE = [
+  {id:"e7d258db-e872-450a-9a80-8579d3849037",name:"Bounce Lavelle Road",code:"BLAVR",brand:"Bounce"},
+  {id:"616c38a4-dfa5-4700-92d2-dd12bbfc500a",name:"Bounce Koramangala",code:"BK",brand:"Bounce"},
+  {id:"5a78757c-88a7-47d2-838f-06d90c552a3a",name:"Bounce Indira Nagar",code:"ING",brand:"Bounce"},
+  {id:"1e48d988-9afe-412a-bf1a-df3b114078fb",name:"Bounce Kamanahalli",code:"KMNH",brand:"Bounce"},
+  {id:"29cea180-138e-4f4d-b774-b4280deb2d8b",name:"Bounce JP Nagar",code:"JPN",brand:"Bounce"},
+  {id:"7c5fa97d-2fcb-47c9-8f88-149fefa5bca5",name:"Bounce New Bel Road",code:"BEL",brand:"Bounce"},
+  {id:"1eb35880-b21b-4522-a959-2531f5ce26a8",name:"Oryza Lavelle Road",code:"OLLR",brand:"Bounce"},
+  {id:"d6060e84-a08c-4644-b0b3-dfb75fd20fe2",name:"Kanya R.K.Salai",code:"KRKS",brand:"Bounce"},
+  {id:"6145b4cf-5a1c-4212-b14f-d4dfc6a9c9dd",name:"Bounce Whitefield",code:"WHF",brand:"Bounce"},
+  {id:"963eef88-6662-4cca-8ec8-14789e65305b",name:"Inventory Chennai",code:"INC",brand:"Bounce"},
+  {id:"a27103b6-1766-42b8-8b96-e054ed5e5440",name:"Inventory Bangalore",code:"INB",brand:"Bounce"},
+  {id:"db1ef2f1-d055-4e40-8abb-ef652130c3a1",name:"Inventory Spalon",code:"ISP",brand:"Bounce"},
+  {id:"4fb847f8-254b-4823-b04b-c6dfdf296749",name:"Bounce Adyar",code:"AD",brand:"Bounce"},
+  {id:"4fb053f4-bb9f-4ac8-88dc-717ab28b0c6a",name:"Bounce Inorbit Mall",code:"BIM",brand:"Bounce"},
+  {id:"311c059c-9d86-40a5-b425-6263bf4451bc",name:"Bounce Sahakarnagar",code:"SHK",brand:"Bounce"},
+  {id:"12e097db-ecad-48f7-b5b2-1ba0425dfa2a",name:"Bounce Banjara Hills",code:"BNJ",brand:"Bounce"},
+  {id:"90d25319-bccb-4604-9604-5afe6787e9c6",name:"Bounce VR Mall Bengaluru",code:"BVRMB",brand:"Bounce"},
+  {id:"2397e646-7dc4-4f93-aa1d-c2ae9b169589",name:"Bounce HSR",code:"BHSR",brand:"Bounce"},
+  {id:"f6895531-d884-4d0c-921a-17c721b7a86f",name:"Bounce Electronic City",code:"BELC",brand:"Bounce"},
+  {id:"8ee73181-1787-4f6f-97c2-2840529bc961",name:"Bounce OMR",code:"BOMR",brand:"Bounce"},
+  {id:"0a12d3f4-728f-4586-a74f-9f75b55877fd",name:"Bounce Sarjapur",code:"BSJPR",brand:"Bounce"},
+  {id:"cce40458-950b-47f5-a354-892a6093ed33",name:"Bounce Marathahalli",code:"BMARATHA",brand:"Bounce"},
+  {id:"ff7de819-3e8b-4493-aed6-2e1453da30ef",name:"Bounce Ashoknagar",code:"BAK",brand:"Bounce"},
+  {id:"dd241b82-f023-4e69-8a2b-a2360915c780",name:"Bounce Falcon City",code:"BFC",brand:"Bounce"},
+  {id:"e9915c95-f0ce-474e-8d3c-e00f1b807e93",name:"Bounce ECR",code:"CBECR006",brand:"Bounce"},
+  {id:"e4dd22e2-9e60-4747-a84d-4531d8f87222",name:"Oryza St.Mary's Road",code:"CORS008",brand:"Bounce"},
+  {id:"f4d86c1d-866a-426c-bebd-1d2949c78cc8",name:"Bounce Ispahani",code:"CBI005",brand:"Bounce"},
+  {id:"25134ee1-f177-47e3-9174-967d6bf3d68b",name:"Training",code:"TNT",brand:"Bounce"},
+  {id:"6df1d9f3-3726-4df7-b6b1-4baee6fc9948",name:"Bounce KNK",code:"BKNK",brand:"Bounce"},
+  {id:"f19c9193-3cfb-4e7a-abfb-19c7959df0ae",name:"Bounce Annanagar",code:"BAN",brand:"Bounce"}
+];
+
+// ── Combined centers list ──
+const CENTERS = [...CENTERS_JCB, ...CENTERS_BOUNCE];
+
+// Populate "Fetch by Center" dropdown in controls bar
+const ctrlSel = document.getElementById('center-select-ctrl');
+
+// Add "Both Brands" option first
+const bothOpt = document.createElement('option');
+bothOpt.value = '__ALL__';
+bothOpt.textContent = '🔀 Both Brands (All Centers)';
+ctrlSel.appendChild(bothOpt);
+
+// JCB group
+const grpJCB = document.createElement('optgroup');
+grpJCB.label = '── JCB Brand ──';
+ctrlSel.appendChild(grpJCB);
+CENTERS_JCB.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c.id;
+  o.dataset.code = c.code;
+  o.dataset.brand = 'JCB';
+  o.textContent = c.code + ' — ' + c.name;
+  grpJCB.appendChild(o);
+});
+
+// Bounce group
+const grpBounce = document.createElement('optgroup');
+grpBounce.label = '── Bounce Brand ──';
+ctrlSel.appendChild(grpBounce);
+CENTERS_BOUNCE.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c.id;
+  o.dataset.code = c.code;
+  o.dataset.brand = 'Bounce';
+  o.textContent = c.code + ' — ' + c.name;
+  grpBounce.appendChild(o);
+});
+
+// ── State ──
+let employeeMap  = {};   // empCode → {name, title}
+let empLoaded    = false;
+let allData      = [];   // all fetched + processed rows (accumulates)
+let filteredData = [];
+let currentPage  = 1;
+let sortCol      = 'date';
+let sortDir      = -1;   // -1 = desc, 1 = asc
+
+// ── Helpers ──
+const fmt    = d => { const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; };
+const addD   = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r; };
+const diffD  = (a,b) => Math.round((b-a)/86400000);
+const pDate  = s => new Date(s+"T00:00:00");
+const sleep  = ms => new Promise(r=>setTimeout(r,ms));
+const esc    = s => s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : '';
+
+const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+// ── Load Employees ──
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyj8VHEwxdK6v2fSWvbYF9uTK3xNKXi4hXieeZrCUtsYvheikzsh_UuuVLc-OXwUVOjfg/exec";
+
+async function loadEmployeesFromSheet() {
+  const btn = document.getElementById('load-emp-btn');
+  btn.disabled = true;
+  setEmpPill('loading', '⏳ Loading employees…');
+  employeeMap = {};
+
+  try {
+    // Apps Script web apps always respond with Access-Control-Allow-Origin: *
+    // so this works from local files too
+    const resp = await fetch(APPS_SCRIPT_URL, { redirect: 'follow' });
+    if (!resp.ok) throw new Error("HTTP " + resp.status);
+    const csv = await resp.text();
+    const loaded = parseEmployeeCSV(csv);
+    if (loaded === 0) throw new Error("0 records");
+    finalizeEmpLoad(loaded, 'Apps Script');
+  } catch(err) {
+    console.warn("Apps Script failed:", err);
+    setEmpPill('error', '⚠ Failed — click to load manually');
+  }
+  btn.disabled = false;
+}
+
+function finalizeEmpLoad(loaded, source) {
+  setEmpPill('ok', `👤 ${loaded.toLocaleString()} employees`);
+  empLoaded = true;
+  if (allData.length) {
+    allData.forEach(r => {
+      const e = employeeMap[r.employeeCode] || {};
+      r.employeeName = e.name  || r.employeeName || '';
+      r.jobTitle     = e.title || r.jobTitle     || '';
+    });
+    applyFilters();
+  }
+  showInfo(`👤 ${loaded.toLocaleString()} employees loaded via ${source}`, 4000);
+}
+
+// ── Paste fallback modal ──
+function openEmpModal() {
+  document.getElementById('emp-modal').classList.add('on');
+  document.getElementById('paste-area').value = '';
+  document.getElementById('paste-result').className = 'paste-result';
+  document.getElementById('paste-result').textContent = '';
+}
+function closeEmpModal() { document.getElementById('emp-modal').classList.remove('on'); }
+
+function processPaste() {
+  const raw = document.getElementById('paste-area').value.trim();
+  const res = document.getElementById('paste-result');
+  if (!raw) { res.className='paste-result err'; res.textContent='Nothing pasted. Copy all rows from your Employees sheet (Ctrl+A → Ctrl+C) then paste here.'; return; }
+  const lines = raw.split('\n').map(l => l.split('\t'));
+  if (lines.length < 2) { res.className='paste-result err'; res.textContent='Could not parse. Make sure you copied from Google Sheets.'; return; }
+  const header = lines[0].map(h => h.trim().toLowerCase());
+  const ci = {
+    code:  header.findIndex(h => h.includes('employee code')),
+    name:  header.findIndex(h => h.includes('full name')),
+    fname: header.findIndex(h => h.includes('first name')),
+    lname: header.findIndex(h => h.includes('last name')),
+    title: header.findIndex(h => h.includes('job title')),
+  };
+  if (ci.code < 0) { ci.code=4; ci.name=7; ci.fname=5; ci.lname=6; ci.title=9; }
+  employeeMap = {};
+  let loaded = 0;
+  lines.slice(1).forEach(cols => {
+    const code = (cols[ci.code]||'').trim();
+    if (!code || code.toLowerCase()==='employee code') return;
+    const name = ((ci.name>=0?cols[ci.name]||'':'')||[cols[ci.fname]||'',cols[ci.lname]||''].join(' ')).trim();
+    const title = (ci.title>=0?cols[ci.title]||'':'').trim();
+    if (!employeeMap[code]) { employeeMap[code]={name,title}; loaded++; }
+  });
+  if (loaded===0) { res.className='paste-result err'; res.textContent='No employee codes found. Include the header row.'; return; }
+  res.className='paste-result ok';
+  res.textContent=`✓ ${loaded.toLocaleString()} employees loaded!`;
+  finalizeEmpLoad(loaded, 'pasted data');
+  setTimeout(closeEmpModal, 1400);
+}
+
+function saveAppsScriptUrl() {} // no-op, kept for HTML onclick refs
+
+function parseEmployeeCSV(csv) {
+  // Column positions from sheet (0-indexed):
+  // A=0 Center Name, B=1 Center Code, C=2 Center ID, D=3 Employee ID,
+  // E=4 Employee Code, F=5 First Name, G=6 Last Name, H=7 Full Name,
+  // I=8 Gender, J=9 Job Title
+
+  function parseCSVLine(line) {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (ch === ',' && !inQ) {
+        cols.push(cur.trim()); cur = '';
+      } else cur += ch;
+    }
+    cols.push(cur.trim());
+    return cols.map(c => c.replace(/^"|"$/g, '').trim());
+  }
+
+  const lines = csv.split('\n').filter(l => l.trim());
+  if (lines.length < 2) return 0;
+
+  // Auto-detect columns from header, fallback to fixed positions
+  const header = parseCSVLine(lines[0]).map(h => h.toLowerCase());
+  let CODE  = header.findIndex(h => h === 'employee code');
+  let NAME  = header.findIndex(h => h === 'full name');
+  let FNAME = header.findIndex(h => h === 'first name');
+  let LNAME = header.findIndex(h => h === 'last name');
+  let TITLE = header.findIndex(h => h === 'job title');
+
+  // Fallback to known fixed positions
+  if (CODE  < 0) CODE  = 4;
+  if (NAME  < 0) NAME  = 7;
+  if (FNAME < 0) FNAME = 5;
+  if (LNAME < 0) LNAME = 6;
+  if (TITLE < 0) TITLE = 9;
+
+  let loaded = 0;
+  for (let i = 1; i < lines.length; i++) {
+    const c = parseCSVLine(lines[i]);
+    if (c.length < 5) continue;
+    const code = c[CODE] || '';
+    if (!code) continue;
+    const name  = c[NAME] || (c[FNAME] + ' ' + c[LNAME]).trim() || '';
+    const title = c[TITLE] || '';
+    if (!employeeMap[code]) {
+      employeeMap[code] = { name, title };
+      loaded++;
+    }
+  }
+  return loaded;
+}
+
+function setEmpPill(cls, text) {
+  const el = document.getElementById('emp-pill');
+  el.className = cls; el.textContent = text;
+  el.style.cursor = cls === 'error' ? 'pointer' : 'default';
+  el.onclick = cls === 'error' ? openEmpModal : null;
+}
+
+// ── Date quick select ──
+function setQuick(q, el) {
+  document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  const t = new Date(); t.setHours(0,0,0,0);
+  let s, e;
+  if      (q==='today')     { s=e=t; }
+  else if (q==='yesterday') { s=e=addD(t,-1); }
+  else if (q==='week')      { s=addD(t,-6); e=t; }
+  else if (q==='month')     { s=new Date(t.getFullYear(),t.getMonth(),1); e=t; }
+  else if (q==='lastmonth') { s=new Date(t.getFullYear(),t.getMonth()-1,1); e=new Date(t.getFullYear(),t.getMonth(),0); }
+  else if (q==='quarter')   { const qs=Math.floor(t.getMonth()/3)*3; s=new Date(t.getFullYear(),qs,1); e=t; }
+  document.getElementById('start-date').value = fmt(s);
+  document.getElementById('end-date').value   = fmt(e);
+  hideErr();
+}
+
+document.getElementById('start-date').addEventListener('change', chkRange);
+document.getElementById('end-date').addEventListener('change', chkRange);
+function chkRange() {
+  const s=document.getElementById('start-date').value, e=document.getElementById('end-date').value;
+  if (!s||!e) return;
+  const d=diffD(pDate(s),pDate(e));
+  if (d<0) { showErr("End date must be after start date."); return; }
+  if (d>90) { showErr("Maximum 90 days. Please adjust."); return; }
+  hideErr();
+  document.querySelectorAll('.qbtn').forEach(b=>b.classList.remove('active'));
+}
+
+// ── Fetch Attendance ──
+async function fetchAttendance() {
+  hideErr();
+  const sv=document.getElementById('start-date').value, ev=document.getElementById('end-date').value;
+  if (!sv||!ev) { showErr("Please select start and end dates."); return; }
+  const sd=pDate(sv), ed=pDate(ev), td=diffD(sd,ed);
+  if (td<0) { showErr("End date must be after start date."); return; }
+  if (td>90) { showErr("Maximum 90 days."); return; }
+
+  // Determine which account(s) and center(s) to fetch
+  const ctrlVal = document.getElementById('center-select-ctrl').value;
+  const selOpt  = document.getElementById('center-select-ctrl').selectedOptions[0];
+  const selBrand = selOpt ? selOpt.dataset.brand : '';
+  const selCode  = selOpt ? (selOpt.dataset.code || '') : '';
+
+  // Decide which accounts to call
+  let accountsToFetch = [];
+  if (!ctrlVal || ctrlVal === '__ALL__') {
+    // Both brands — all centers
+    accountsToFetch = [
+      { acct: ACCT1, centerCode: '' },
+      { acct: ACCT2, centerCode: '' }
+    ];
+  } else if (selBrand === 'JCB') {
+    accountsToFetch = [{ acct: ACCT1, centerCode: selCode }];
+  } else {
+    accountsToFetch = [{ acct: ACCT2, centerCode: selCode }];
+  }
+
+  // Build 6-day chunks
+  const chunks = [];
+  let cur = new Date(sd);
+  while (cur <= ed) {
+    const ce = new Date(Math.min(addD(cur,CHUNK-1),ed));
+    chunks.push({from:new Date(cur),to:new Date(ce)});
+    cur = addD(ce,1);
+  }
+
+  const totalBatches = chunks.length * accountsToFetch.length;
+  const btn = document.getElementById('fetch-btn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Fetching…';
+  showProg(0, `Batch 0/${totalBatches}`);
+
+  const merged = {};
+  let hasErr = false;
+  let batchDone = 0;
+
+  for (const {acct, centerCode} of accountsToFetch) {
+    for (let i=0;i<chunks.length;i++) {
+      const c=chunks[i];
+      const st=fmt(c.from)+" 00:01:00", et=fmt(c.to)+" 23:59:00";
+      const url=acct.url+
+        "?userName="+encodeURIComponent(acct.user)+
+        "&password="+encodeURIComponent(acct.pass)+
+        "&accountName="+encodeURIComponent(acct.acct)+
+        "&operation=all"+
+        "&starttime="+encodeURIComponent(st)+
+        "&endtime="+encodeURIComponent(et);
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error("HTTP "+resp.status);
+        const data = await resp.json();
+        (data.status||[]).forEach(item=>{
+          // If center filter selected, only keep that center's records
+          if (centerCode && item.centerCode !== centerCode) return;
+
+          // Tag which brand this record came from
+          const brandTag = acct.brand;
+          const key = brandTag+"---"+item.employeeCode+"---"+item.date;
+          if (!merged[key]) {
+            merged[key] = {
+              employeeCode: item.employeeCode||"",
+              centerName:   item.centerName||"",
+              centerCode:   item.centerCode||"",
+              date:         item.date||"",
+              checkin:      item.acutalCheckinTime||"",
+              checkout:     item.acutalCheckoutTime||"",
+              brand:        brandTag
+            };
+          } else {
+            if (item.acutalCheckinTime&&(!merged[key].checkin||item.acutalCheckinTime<merged[key].checkin))
+              merged[key].checkin=item.acutalCheckinTime;
+            if (item.acutalCheckoutTime&&(!merged[key].checkout||item.acutalCheckoutTime>merged[key].checkout))
+              merged[key].checkout=item.acutalCheckoutTime;
+          }
+        });
+      } catch(e) { hasErr=true; }
+
+      batchDone++;
+      const pct=Math.round((batchDone/totalBatches)*100);
+      showProg(pct, `[${acct.brand}] Batch ${i+1}/${chunks.length} — ${pct}%`);
+      await sleep(180);
+    }
+  }
+
+  // Merge new records into allData
+  const newRows = processRecords(merged);
+
+  // Remove old records that overlap with the fetched date range + center filter
+  const fetchStart = sv, fetchEnd = ev;
+  allData = allData.filter(r => {
+    const inRange = r.date >= fetchStart && r.date <= fetchEnd;
+    const inBrand = accountsToFetch.length > 1
+      ? true
+      : r.brand === accountsToFetch[0].acct.brand;
+    const inCenter = !selCode || r.centerCode === selCode;
+    return !(inRange && inBrand && inCenter);
+  });
+  allData = allData.concat(newRows);
+
+  // Sort combined data
+  allData.sort((a,b)=>b.date.localeCompare(a.date)||a.centerCode.localeCompare(b.centerCode)||a.employeeCode.localeCompare(b.employeeCode));
+
+  populateCenterTableFilter();
+  applyFilters();
+  hideProg();
+  btn.disabled = false;
+  btn.innerHTML = '⬇ Fetch Attendance';
+
+  const brandLabel = accountsToFetch.length > 1 ? 'Both Brands' : accountsToFetch[0].acct.brand;
+  if (hasErr) showInfo(`Some batches had errors — data may be partial. Total records: ${allData.length.toLocaleString()}`);
+  else showInfo(`✅ Fetched ${newRows.length.toLocaleString()} records · ${brandLabel}${selCode?' — '+selCode:''} · ${sv} to ${ev} · Total in memory: ${allData.length.toLocaleString()}`, 5000);
+}
+
+// ── Process raw merged map → row array ──
+function processRecords(merged) {
+  return Object.values(merged).map(item => {
+    const dateObj = new Date(item.date+"T00:00:00");
+    let working="", status="", diff=0;
+    const ci=item.checkin, co=item.checkout;
+    if (ci && !co) {
+      // Has check-in but no check-out
+      status = "No Checkout";
+    } else if (ci&&co&&ci!==co) {
+      const cip=ci.split(":"), cop=co.split(":");
+      diff=(+cop[0]*60+ +cop[1])-(+cip[0]*60+ +cip[1]);
+      if (diff>0) {
+        working=String(Math.floor(diff/60)).padStart(2,"0")+":"+String(diff%60).padStart(2,"0");
+        if      (diff<525) status="Less than 8:45";
+        else if (diff<540) status="Less working hours";
+        // else status="" = Full Day
+      } else { status="No Attendance"; }
+    } else { status="No Attendance"; }
+
+    const emp = employeeMap[item.employeeCode]||{};
+    return {
+      centerCode:   item.centerCode,
+      centerName:   item.centerName,
+      employeeCode: item.employeeCode,
+      employeeName: emp.name  || "",
+      jobTitle:     emp.title || "",
+      month:        MONTHS[dateObj.getMonth()],
+      date:         item.date,
+      day:          DAYS[dateObj.getDay()],
+      checkin:      ci||"",
+      checkout:     co||"",
+      working,
+      status,
+      workMinutes:  diff,
+      brand:        item.brand || ""
+    };
+  });
+}
+
+// ── Sort ──
+let sortAsc = false;
+function sortBy(col) {
+  if (sortCol===col) sortAsc=!sortAsc; else { sortCol=col; sortAsc=false; }
+  // Update header arrows
+  document.querySelectorAll('th').forEach(th=>{
+    th.classList.remove('sorted');
+    const a=th.querySelector('.sort-arrow');
+    if(a) a.textContent='↕';
+  });
+  const ths=document.querySelectorAll('th');
+  const cols=['brand','centerCode','centerName','employeeCode','employeeName','jobTitle','month','date','day','checkin','checkout','workMinutes','status'];
+  const idx=cols.indexOf(col);
+  if(idx>=0&&ths[idx]){
+    ths[idx].classList.add('sorted');
+    const a=ths[idx].querySelector('.sort-arrow');
+    if(a) a.textContent=sortAsc?'↑':'↓';
+  }
+  filteredData.sort((a,b)=>{
+    let va=a[col]||"", vb=b[col]||"";
+    if(col==='workMinutes'){va=+va||0;vb=+vb||0;return sortAsc?va-vb:vb-va;}
+    const r=String(va).localeCompare(String(vb));
+    return sortAsc?r:-r;
+  });
+  currentPage=1;
+  renderTable();
+}
+
+// ── Filters ──
+function applyFilters() {
+  const search  = document.getElementById('search-emp').value.trim().toLowerCase();
+  const statusF = document.getElementById('f-status').value;
+  const centerF = document.getElementById('f-center').value;
+  const brandF  = document.getElementById('f-brand').value;
+
+  filteredData = allData.filter(r=>{
+    if (search) {
+      if (!r.employeeCode.toLowerCase().includes(search) &&
+          !r.employeeName.toLowerCase().includes(search)) return false;
+    }
+    if (brandF  && r.brand !== brandF) return false;
+    if (centerF && r.centerCode!==centerF) return false;
+    if (statusF) {
+      if (statusF==='ok') { if (r.status!=="") return false; }
+      else { if (r.status!==statusF) return false; }
+    }
+    return true;
+  });
+
+  // Re-apply current sort
+  if (sortCol) {
+    filteredData.sort((a,b)=>{
+      let va=a[sortCol]||"", vb=b[sortCol]||"";
+      if(sortCol==='workMinutes'){va=+va||0;vb=+vb||0;return sortAsc?va-vb:vb-va;}
+      const r=String(va).localeCompare(String(vb));
+      return sortAsc?r:-r;
+    });
+  }
+
+  currentPage=1;
+  updateStats();
+  renderTable();
+}
+
+function updateStats() {
+  const s = filteredData;
+  document.getElementById('s-total').textContent      = s.length.toLocaleString();
+  document.getElementById('s-present').textContent    = s.filter(r=>r.status==="").length.toLocaleString();
+  document.getElementById('s-absent').textContent     = s.filter(r=>r.status==="No Attendance").length.toLocaleString();
+  document.getElementById('s-nocheckout').textContent = s.filter(r=>r.status==="No Checkout").length.toLocaleString();
+  document.getElementById('s-less').textContent       = s.filter(r=>r.status==="Less working hours").length.toLocaleString();
+  document.getElementById('s-late').textContent       = s.filter(r=>r.status==="Less than 8:45").length.toLocaleString();
+  document.getElementById('s-emps').textContent       = new Set(s.map(r=>r.employeeCode)).size.toLocaleString();
+}
+
+function populateCenterTableFilter() {
+  const codes = [...new Set(allData.map(r=>r.centerCode))].sort();
+  const sel = document.getElementById('f-center');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All Centers</option>';
+  codes.forEach(code=>{
+    const c=CENTERS.find(x=>x.code===code);
+    const o=document.createElement('option');
+    o.value=code;
+    o.textContent=code+(c?' — '+c.name:'');
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+
+// ── Render table ──
+function renderTable() {
+  const tbody = document.getElementById('tbody');
+  const total = filteredData.length;
+  document.getElementById('rec-count').textContent = total.toLocaleString()+" records";
+
+  if (!total) {
+    tbody.innerHTML=`<tr><td colspan="13"><div class="empty-s">
+      <div class="eico">${allData.length?'🔍':'📅'}</div>
+      <h4>${allData.length?'No matching records':'No data yet'}</h4>
+      <p>${allData.length?'Try adjusting filters or search.':'Select a date range and click <strong>Fetch Attendance</strong>.'}</p>
+    </div></td></tr>`;
+    document.getElementById('pgn').style.display='none';
+    return;
+  }
+
+  const start=(currentPage-1)*PG_SIZE, end=Math.min(start+PG_SIZE,total);
+  tbody.innerHTML = filteredData.slice(start,end).map(r=>{
+    const badge = r.status===""
+      ?`<span class="badge b-ok">✅ Full Day</span>`
+      :r.status==="No Checkout"
+        ?`<span class="badge" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa">🚪 No Checkout</span>`
+        :r.status==="Less than 8:45"
+          ?`<span class="badge b-lt">⚠ ${r.status}</span>`
+          :r.status==="Less working hours"
+            ?`<span class="badge b-lw">⏱ Less hours</span>`
+            :`<span class="badge b-ab">❌ Absent</span>`;
+    const brandBadge = r.brand === 'Bounce'
+      ? `<span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:#ede9fe;color:#5b21b6">Bounce</span>`
+      : `<span style="display:inline-block;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:700;background:var(--blue-light);color:var(--blue)">JCB</span>`;
+    return `<tr>
+      <td>${brandBadge}</td>
+      <td><span class="cc">${esc(r.centerCode)}</span></td>
+      <td>${esc(r.centerName)}</td>
+      <td><code style="font-size:11px;color:var(--gray-600)">${esc(r.employeeCode)}</code></td>
+      <td>${esc(r.employeeName)||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td style="color:var(--gray-500)">${esc(r.jobTitle)||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>${esc(r.month)}</td>
+      <td>${esc(r.date)}</td>
+      <td>${esc(r.day)}</td>
+      <td>${r.checkin?`<span style="color:var(--green-dark);font-weight:600">${esc(r.checkin)}</span>`:'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>${r.checkout?`<span style="color:var(--blue);font-weight:600">${esc(r.checkout)}</span>`:'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td style="font-weight:500">${r.working||'<span style="color:var(--gray-400)">—</span>'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  // Pagination
+  const tp=Math.ceil(total/PG_SIZE);
+  document.getElementById('pgn').style.display='flex';
+  document.getElementById('pgn-info').textContent=`Showing ${start+1}–${end} of ${total.toLocaleString()}`;
+  const btns=document.getElementById('pgn-btns');
+  btns.innerHTML='';
+  const ab=(lbl,pg,dis,act)=>{
+    const b=document.createElement('button');
+    b.className='pb'+(act?' act':'');
+    b.textContent=lbl; b.disabled=dis;
+    if(!dis) b.onclick=()=>goPage(pg);
+    btns.appendChild(b);
+  };
+  ab('‹',currentPage-1,currentPage===1,false);
+  pRange(currentPage,tp).forEach(p=>{
+    if(p==='…'){const s=document.createElement('span');s.textContent='…';s.style.cssText='padding:3px 5px;color:var(--gray-400);font-size:11px';btns.appendChild(s);}
+    else ab(p,p,false,p===currentPage);
+  });
+  ab('›',currentPage+1,currentPage===tp,false);
+}
+
+function goPage(p){ currentPage=p; renderTable(); document.querySelector('.twrap').scrollIntoView({behavior:'smooth',block:'start'}); }
+function pRange(c,t){
+  if(t<=7) return Array.from({length:t},(_,i)=>i+1);
+  if(c<=4) return [1,2,3,4,5,'…',t];
+  if(c>=t-3) return [1,'…',t-4,t-3,t-2,t-1,t];
+  return [1,'…',c-1,c,c+1,'…',t];
+}
+
+// ── CSV ──
+function downloadCSV(){
+  if(!filteredData.length){alert("No data.");return;}
+  const h=["Brand","Center Code","Center Name","Employee Code","Employee Name","Job Title","Month","Date","Day","Check In","Check Out","Working Hours","Status"];
+  const rows=filteredData.map(r=>[
+    r.brand,r.centerCode,r.centerName,r.employeeCode,r.employeeName,r.jobTitle,
+    r.month,r.date,r.day,r.checkin,r.checkout,r.working,
+    r.status===""?"Full Day":r.status
+  ].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(','));
+  const url=URL.createObjectURL(new Blob([[h.join(','),...rows].join('\n')],{type:'text/csv'}));
+  const a=document.createElement('a'); a.href=url;
+  a.download=`attendance_${document.getElementById('start-date').value}_to_${document.getElementById('end-date').value}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ── Progress / banners ──
+function showProg(pct,txt){
+  document.getElementById('prog-wrap').className='on';
+  document.getElementById('prog-fill').style.width=pct+'%';
+  document.getElementById('prog-text').textContent=txt;
+  document.getElementById('prog-pct').textContent=pct+'%';
+}
+function hideProg(){ document.getElementById('prog-wrap').className=''; }
+function showErr(m){ const e=document.getElementById('err-banner'); e.textContent=m; e.className='banner err on'; }
+function hideErr(){ document.getElementById('err-banner').className='banner err'; }
+function showInfo(m,ms=6000){
+  const e=document.getElementById('info-banner'); e.textContent=m; e.className='banner info on';
+  clearTimeout(showInfo._t);
+  showInfo._t=setTimeout(()=>{ e.className='banner info'; },ms);
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.mtab-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  // Show/hide load button
+  document.getElementById('paste-load-btn').style.display = name==='paste' ? '' : 'none';
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW SWITCHER
+// ══════════════════════════════════════════════════════
+function switchView(v) {
+  ['table','heatmap','sales','headcount'].forEach(id => {
+    document.getElementById('vtab-'+id)?.classList.toggle('active', v===id);
+    const el = document.getElementById(id+'-view');
+    if (el) {
+      if (id==='table') { el.classList.toggle('hidden', v!==id); }
+      else { el.classList.toggle('active', v===id); }
+    }
+  });
+  // Stats cards: only show on attendance/heatmap views
+  const statsGrid = document.getElementById('stats-grid');
+  if (statsGrid) statsGrid.style.display = (v === 'table' || v === 'heatmap') ? '' : 'none';
+  // Controls bar: only show on attendance views
+  const controlsBar = document.querySelector('.controls-bar');
+  if (controlsBar) controlsBar.style.display = (v === 'table' || v === 'heatmap') ? '' : 'none';
+  // Progress wrap — always hide when switching
+  if (v !== 'table') { document.getElementById('prog-wrap').classList.remove('on'); }
+  if (v==='heatmap') renderHeatmap();
+  if (v==='sales') { if (!salesData.length) loadSalesData(); else renderSalesDashboard(); }
+  if (v==='headcount') { if (!hcData.length) loadHeadcountData(); else renderHeadcountDashboard(); }
+}
+
+// ══════════════════════════════════════════════════════
+// HEATMAP
+// ══════════════════════════════════════════════════════
+const DAYS_SHORT = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+
+function getStatusClass(status) {
+  if (status === '')                   return 'c-ok';
+  if (status === 'No Checkout')        return 'c-nc';
+  if (status === 'Less than 8:45')     return 'c-lt';
+  if (status === 'Less working hours') return 'c-lw';
+  if (status === 'No Attendance')      return 'c-ab';
+  return 'c-na';
+}
+
+function renderHeatmap() {
+  const hmBrand  = document.getElementById('hm-brand').value;
+  const hmCenter = document.getElementById('hm-center').value;
+  const hmSearch = (document.getElementById('hm-search').value||'').toLowerCase();
+
+  if (!allData.length) return;
+
+  // Get holidays set for quick lookup
+  const holidays = getHolidays(); // [{date, name, type, brand}]
+  const holidayMap = {}; // date -> holiday obj
+  holidays.forEach(h => { holidayMap[h.date] = h; });
+
+  // Filter data
+  let data = allData.filter(r => {
+    if (hmBrand  && r.brand !== hmBrand) return false;
+    if (hmCenter && r.centerCode !== hmCenter) return false;
+    if (hmSearch && !r.employeeName.toLowerCase().includes(hmSearch) &&
+                    !r.employeeCode.toLowerCase().includes(hmSearch)) return false;
+    return true;
+  });
+
+  if (!data.length) {
+    document.getElementById('hm-body').innerHTML = '<div style="text-align:center;padding:48px;color:var(--gray-400)">No records match the current filters.</div>';
+    return;
+  }
+
+  // Collect all dates in range
+  const allDates = [...new Set(allData.map(r=>r.date))].sort();
+  const dateObjs = allDates.map(d=>({ d, obj: new Date(d+'T00:00:00') }));
+
+  // Group data: employeeCode → date → record
+  const empMap = {};
+  data.forEach(r => {
+    if (!empMap[r.employeeCode]) empMap[r.employeeCode] = { name: r.employeeName||r.employeeCode, center: r.centerCode, brand: r.brand, dates: {} };
+    empMap[r.employeeCode].dates[r.date] = r;
+  });
+
+  const emps = Object.entries(empMap).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  document.getElementById('hm-count').textContent = emps.length + ' employees';
+
+  // Build table HTML
+  let html = '<table class="hm-table"><thead><tr>';
+  html += `<th class="hm-emp-col head">EMPLOYEES</th>`;
+
+  dateObjs.forEach(({d,obj}) => {
+    const dd    = String(obj.getDate()).padStart(2,'0');
+    const dn    = DAYS_SHORT[obj.getDay()];
+    const isWknd    = obj.getDay()===0 || obj.getDay()===6;
+    const isHoliday = !!holidayMap[d];
+    const headCls   = isHoliday ? 'dh-holiday' : isWknd ? 'dh-wknd' : '';
+    const tipTitle  = isHoliday ? holidayMap[d].name : isWknd ? 'Weekend' : '';
+    html += `<th class="hm-date-head ${headCls}" title="${tipTitle}"><div>${dd}</div><div class="dn">${dn}</div></th>`;
+  });
+
+  // Summary col headers
+  html += `<th class="hm-sum-head s-ok">✅<br>Full</th>`;
+  html += `<th class="hm-sum-head s-nc">🚪<br>N/CO</th>`;
+  html += `<th class="hm-sum-head s-lt">⚠<br>&lt;8:45</th>`;
+  html += `<th class="hm-sum-head s-lw">⏱<br>Less</th>`;
+  html += `<th class="hm-sum-head s-ab">❌<br>Abs</th>`;
+  html += `<th class="hm-sum-head s-tot">⏰<br>Hrs</th>`;
+  html += '</tr></thead><tbody>';
+
+  emps.forEach(([code, emp]) => {
+    let ok=0, nc=0, lt=0, lw=0, ab=0, totalMins=0;
+    html += `<tr>`;
+    html += `<td class="hm-emp-col"><div class="hm-emp-name" title="${esc(emp.name)}">${esc(emp.name)}</div><div class="hm-emp-hrs" id="hmh-${code}">—</div></td>`;
+
+    dateObjs.forEach(({d,obj}) => {
+      const isWknd    = obj.getDay()===0 || obj.getDay()===6;
+      const isHoliday = !!holidayMap[d];
+      const isOff     = isWknd || isHoliday; // off day = no absent count
+      const extraCls  = isHoliday ? 'is-holiday' : isWknd ? 'is-wknd' : '';
+      const rec       = emp.dates[d];
+      const tipExtra  = isHoliday ? ` 🎌 ${holidayMap[d].name}` : isWknd ? ' 🔵 Weekend' : '';
+
+      if (!rec) {
+        // No record — off days don't count as absent
+        const cls = 'c-na';
+        if (!isOff) ab++;
+        const tip = `${d}${tipExtra}\nNo data`;
+        html += `<td class="hm-cell ${cls} ${extraCls}" onmouseenter="showTip(event,'${tip.replace(/'/g,"&#39;")}')" onmouseleave="hideTip()"></td>`;
+        return;
+      }
+
+      const cls = getStatusClass(rec.status);
+      // Only count absent towards summary if it's a working day
+      if (cls==='c-ok') ok++;
+      else if (cls==='c-nc') nc++;
+      else if (cls==='c-lt') lt++;
+      else if (cls==='c-lw') lw++;
+      else if (!isOff) ab++;  // absent on working days only
+
+      if (rec.workMinutes) totalMins += rec.workMinutes;
+
+      const tip = `${rec.employeeName||code} | ${d}${tipExtra}\nIn: ${rec.checkin||'—'}  Out: ${rec.checkout||'—'}\nHrs: ${rec.working||'—'} | ${rec.status||'Full Day'}`;
+      const txt = rec.working ? rec.working.replace(':','<br>') : '';
+      html += `<td class="hm-cell ${cls} ${extraCls}" onmouseenter="showTip(event,'${tip.replace(/'/g,"&#39;")}')" onmouseleave="hideTip()"><div class="hm-cell-txt">${txt}</div></td>`;
+    });
+
+    const th = Math.floor(totalMins/60), tm = totalMins%60;
+    const totalStr = totalMins ? `${th}h ${String(tm).padStart(2,'0')}m` : '—';
+
+    html += `<td class="hm-sum-cell s-ok">${ok||'—'}</td>`;
+    html += `<td class="hm-sum-cell s-nc">${nc||'—'}</td>`;
+    html += `<td class="hm-sum-cell s-lt">${lt||'—'}</td>`;
+    html += `<td class="hm-sum-cell s-lw">${lw||'—'}</td>`;
+    html += `<td class="hm-sum-cell s-ab">${ab||'—'}</td>`;
+    html += `<td class="hm-sum-cell s-tot" style="font-size:10px">${totalStr}</td>`;
+    html += `</tr>`;
+
+    setTimeout(()=>{ const el=document.getElementById('hmh-'+code); if(el) el.textContent=totalStr; },0);
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('hm-body').innerHTML = html;
+
+  // Sync center dropdown
+  const hmSel = document.getElementById('hm-center');
+  const curVal = hmSel.value;
+  hmSel.innerHTML = '<option value="">All Centers</option>';
+  const centers = [...new Set(allData.map(r=>r.centerCode))].sort();
+  centers.forEach(c => {
+    const o = document.createElement('option');
+    o.value=c; o.textContent=c;
+    if(c===curVal) o.selected=true;
+    hmSel.appendChild(o);
+  });
+}
+
+// Tooltip
+const _tip = document.createElement('div');
+_tip.className = 'hm-tip';
+_tip.id = 'hm-tip';
+document.body.appendChild(_tip);
+function showTip(e, text) {
+  _tip.innerHTML = text.replace(/\n/g,'<br>');
+  _tip.style.display = 'block';
+  moveTip(e);
+}
+function moveTip(e) {
+  _tip.style.left = (e.clientX+14)+'px';
+  _tip.style.top  = (e.clientY-10)+'px';
+}
+document.addEventListener('mousemove', e => { if(_tip.style.display==='block') moveTip(e); });
+function hideTip() { _tip.style.display='none'; }
+
+// Heatmap CSV download
+function downloadHeatmapCSV() {
+  if (!allData.length) return;
+  const hmBrand  = document.getElementById('hm-brand').value;
+  const hmCenter = document.getElementById('hm-center').value;
+  let data = allData.filter(r => {
+    if (hmBrand  && r.brand !== hmBrand) return false;
+    if (hmCenter && r.centerCode !== hmCenter) return false;
+    return true;
+  });
+  const allDates = [...new Set(data.map(r=>r.date))].sort();
+  const empMap = {};
+  data.forEach(r => {
+    if (!empMap[r.employeeCode]) empMap[r.employeeCode] = { name:r.employeeName||r.employeeCode, center:r.centerCode, brand:r.brand, dates:{} };
+    empMap[r.employeeCode].dates[r.date] = r;
+  });
+  const emps = Object.entries(empMap).sort((a,b)=>a[1].name.localeCompare(b[1].name));
+  const hdr = ['Employee Code','Employee Name','Center','Brand',...allDates,'Full Day','No Checkout','<8:45','Less Hrs','Absent','Total Hrs'];
+  const rows = emps.map(([code,emp]) => {
+    let ok=0,nc=0,lt=0,lw=0,ab=0,mins=0;
+    const cells = allDates.map(d => {
+      const r = emp.dates[d];
+      if (!r) { ab++; return 'Absent'; }
+      const s = r.status||'Full Day';
+      if (s==='') { ok++; } else if (s==='No Checkout') { nc++; } else if (s==='Less than 8:45') { lt++; } else if (s==='Less working hours') { lw++; } else { ab++; }
+      if (r.workMinutes) mins+=r.workMinutes;
+      return s||'Full Day';
+    });
+    const th = Math.floor(mins/60), tm = mins%60;
+    return [code, emp.name, emp.center, emp.brand, ...cells, ok, nc, lt, lw, ab, mins?`${th}:${String(tm).padStart(2,'0')}`:'0:00'];
+  });
+  const csv = [hdr,...rows].map(r=>r.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='attendance_heatmap.csv'; a.click();
+}
+
+// ══════════════════════════════════════════════════════
+// HOLIDAY MANAGER
+// ══════════════════════════════════════════════════════
+function getHolidays() {
+  try { return JSON.parse(localStorage.getItem('jcb_holidays')||'[]'); } catch(e){ return []; }
+}
+function saveHolidays(list) { localStorage.setItem('jcb_holidays', JSON.stringify(list)); }
+
+function addHoliday() {
+  const date  = document.getElementById('hl-date').value;
+  const name  = document.getElementById('hl-name').value.trim();
+  const type  = document.getElementById('hl-type').value;
+  const brand = document.getElementById('hl-brand').value;
+  if (!date) { alert('Please select a date.'); return; }
+  if (!name) { alert('Please enter a holiday name.'); return; }
+
+  const list = getHolidays();
+  // Prevent duplicates for same date+brand
+  const exists = list.find(h => h.date===date && (h.brand===brand||h.brand==='both'||brand==='both'));
+  if (exists) {
+    if (!confirm(`"${exists.name}" already exists for ${date}. Add anyway?`)) return;
+  }
+  list.push({ date, name, type, brand });
+  list.sort((a,b)=>a.date.localeCompare(b.date));
+  saveHolidays(list);
+  document.getElementById('hl-date').value  = '';
+  document.getElementById('hl-name').value  = '';
+  renderHolidayTable();
+  showInfo(`✅ Holiday "${name}" on ${date} added.`, 3000);
+}
+
+function deleteHoliday(idx) {
+  const list = getHolidays();
+  const h = list[idx];
+  if (!confirm(`Remove "${h.name}" (${h.date})?`)) return;
+  list.splice(idx,1);
+  saveHolidays(list);
+  renderHolidayTable();
+}
+
+function clearAllHolidays() {
+  if (!confirm('Clear ALL holidays? This cannot be undone.')) return;
+  saveHolidays([]);
+  renderHolidayTable();
+}
+
+function renderHolidayTable() {
+  const list = getHolidays();
+  const tbody = document.getElementById('hl-tbody');
+  if (!tbody) return;
+
+  // Populate year filter
+  const yearSel = document.getElementById('hl-filter-year');
+  const curYear = yearSel?.value || '';
+  const years = [...new Set(list.map(h=>h.date.slice(0,4)))].sort().reverse();
+  if (yearSel) {
+    yearSel.innerHTML = '<option value="">All Years</option>' + years.map(y=>`<option value="${y}" ${y===curYear?'selected':''}>${y}</option>`).join('');
+  }
+
+  const filterYear = yearSel?.value || '';
+  const filtered = filterYear ? list.filter(h=>h.date.startsWith(filterYear)) : list;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="hl-empty">${list.length?'No holidays for selected year.':'No holidays added yet.<br>Use the form on the left to add holidays.'}</div></td></tr>`;
+    return;
+  }
+
+  const DAYS_FULL = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  tbody.innerHTML = filtered.map((h, i) => {
+    const realIdx = list.indexOf(h);
+    const d = new Date(h.date+'T00:00:00');
+    const dayName = DAYS_FULL[d.getDay()];
+    const isWknd = d.getDay()===0||d.getDay()===6;
+    const typeBadge = h.type==='optional'
+      ? `<span class="hl-badge-wknd">📌 Optional</span>`
+      : `<span class="hl-badge-hol">🎌 Holiday</span>`;
+    const brandBadge = h.brand==='both'
+      ? `<span class="tag tag-both">Both</span>`
+      : h.brand==='JCB'
+        ? `<span class="tag tag-jcb">JCB</span>`
+        : `<span class="tag tag-bounce">Bounce</span>`;
+    return `<tr>
+      <td style="font-weight:700;color:var(--gray-800)">${h.date}</td>
+      <td style="color:${isWknd?'#1e40af':'var(--gray-600)'}">${dayName}</td>
+      <td>${esc(h.name)}</td>
+      <td>${typeBadge}</td>
+      <td>${brandBadge}</td>
+      <td><button class="hl-del" onclick="deleteHoliday(${realIdx})">🗑</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// AUTH & USER MANAGEMENT
+// ══════════════════════════════════════════════════════
+
+// ── Default Super Admin (always exists, cannot be deleted) ──
+const SUPER_ADMIN = { username:'admin', password:'Admin@JCB2024', fullname:'Super Admin', role:'admin', brand:'both', centers:[], download:'yes' };
+
+// ── Default password assigned to every newly created user ──
+const DEFAULT_NEW_USER_PASSWORD = 'jcbounce@123';
+
+// Restore a previously-changed super admin password, if any
+(function(){
+  const savedAdminPw = localStorage.getItem('jcb_superadmin_pw');
+  if (savedAdminPw) SUPER_ADMIN.password = savedAdminPw;
+})();
+
+// ══════════════════════════════════════════════════════
+// USER STORE — Google Apps Script backend
+// Set USER_MGMT_URL to your deployed Apps Script web app URL.
+// Falls back to localStorage cache if the URL is not configured.
+// ══════════════════════════════════════════════════════
+let USER_MGMT_URL = localStorage.getItem('jcb_user_mgmt_url') || '';
+
+function setUserMgmtUrl(url) {
+  USER_MGMT_URL = url.trim();
+  localStorage.setItem('jcb_user_mgmt_url', USER_MGMT_URL);
+}
+
+// LocalStorage cache helpers (used as fallback + offline cache)
+function _cacheUsers(users) { try { localStorage.setItem('jcb_users', JSON.stringify(users)); } catch(e){} }
+function _cachedUsers()     { try { return JSON.parse(localStorage.getItem('jcb_users')||'[]'); } catch(e){ return []; } }
+
+// ── Async fetch all users from Apps Script ──
+async function fetchUsersOnline() {
+  if (!USER_MGMT_URL) return null; // no URL configured
+  try {
+    const resp = await fetch(USER_MGMT_URL + '?action=list', { redirect:'follow' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!Array.isArray(data)) throw new Error('Bad response');
+    _cacheUsers(data);
+    return data;
+  } catch(e) {
+    console.warn('User fetch failed, using cache:', e);
+    return null;
+  }
+}
+
+// ── Sync getUsers — returns cached list (UI reads this) ──
+function getUsers() { return _cachedUsers(); }
+
+// ── Async saveUsers — pushes full list to Apps Script ──
+async function saveUsers(users) {
+  _cacheUsers(users); // always update cache immediately
+  if (!USER_MGMT_URL) return; // no remote configured
+  try {
+    await fetch(USER_MGMT_URL, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action: 'save', users })
+    });
+  } catch(e) {
+    console.warn('User save to Apps Script failed (cached locally):', e);
+    showInfo('⚠️ User saved locally only — Apps Script unreachable.', 5000);
+  }
+}
+
+// ── Session ──
+let currentUser = null;
+
+async function doLogin() {
+  const u = document.getElementById('login-user').value.trim();
+  const p = document.getElementById('login-pass').value;
+  const err = document.getElementById('login-err');
+  err.classList.remove('on');
+
+  // Try to refresh users from online before checking (silent, falls back to cache)
+  await fetchUsersOnline();
+
+  // Check super admin
+  let matched = null;
+  if (u.toLowerCase() === SUPER_ADMIN.username.toLowerCase() && p === SUPER_ADMIN.password) {
+    matched = {...SUPER_ADMIN};
+  } else {
+    const users = getUsers();
+    const found = users.find(x => x.username.toLowerCase() === u.toLowerCase() && x.password === p);
+    if (found) matched = {...found};
+  }
+
+  if (!matched) { err.classList.add('on'); return; }
+
+  // ── First-login / forced password reset gate ──
+  if (matched.mustChangePassword) {
+    pendingPasswordChangeUser = matched;
+    document.getElementById('login-screen').classList.add('hidden');
+    document.getElementById('pwchange-screen').classList.remove('hidden');
+    document.getElementById('pwchange-err').classList.remove('on');
+    document.getElementById('pwchange-new').value = '';
+    document.getElementById('pwchange-confirm').value = '';
+    setTimeout(()=>{ const el=document.getElementById('pwchange-new'); if(el) el.focus(); }, 80);
+    return;
+  }
+
+  currentUser = matched;
+  sessionStorage.setItem('jcb_session', JSON.stringify(matched));
+  activateUser(matched);
+}
+
+// ── User pending a forced password change (set right after login match) ──
+let pendingPasswordChangeUser = null;
+
+async function doForcePasswordChange() {
+  const np = document.getElementById('pwchange-new').value;
+  const cp = document.getElementById('pwchange-confirm').value;
+  const err = document.getElementById('pwchange-err');
+  err.classList.remove('on');
+
+  if (!np || np.length < 6) {
+    err.textContent = 'Password must be at least 6 characters.';
+    err.classList.add('on');
+    return;
+  }
+  if (np !== cp) {
+    err.textContent = 'Passwords do not match.';
+    err.classList.add('on');
+    return;
+  }
+  if (np === DEFAULT_NEW_USER_PASSWORD) {
+    err.textContent = 'Please choose a password different from the default.';
+    err.classList.add('on');
+    return;
+  }
+
+  const target = pendingPasswordChangeUser;
+  if (!target) { err.textContent = 'Session expired, please sign in again.'; err.classList.add('on'); return; }
+
+  // Super admin changing password updates only the local constant for this session
+  // (super admin is not stored in the Sheet, so persist via localStorage override)
+  if (target.username === SUPER_ADMIN.username) {
+    SUPER_ADMIN.password = np;
+    localStorage.setItem('jcb_superadmin_pw', np);
+    SUPER_ADMIN.mustChangePassword = false;
+  } else {
+    let users = getUsers();
+    const idx = users.findIndex(x => x.username === target.username);
+    if (idx >= 0) {
+      users[idx].password = np;
+      users[idx].mustChangePassword = false;
+      users[idx].lastPasswordChange = new Date().toISOString();
+      await saveUsers(users);
+    }
+  }
+
+  const updatedUser = { ...target, password: np, mustChangePassword: false };
+  pendingPasswordChangeUser = null;
+  currentUser = updatedUser;
+  sessionStorage.setItem('jcb_session', JSON.stringify(updatedUser));
+  document.getElementById('pwchange-screen').classList.add('hidden');
+  showInfo('✅ Password updated successfully.', 3000);
+  activateUser(updatedUser);
+}
+
+function activateUser(matched) {
+  currentUser = matched;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('user-display-name').textContent = matched.fullname || matched.username;
+  document.getElementById('user-avatar').textContent = (matched.fullname||matched.username).charAt(0).toUpperCase();
+  if (matched.role === 'admin') document.getElementById('admin-btn').style.display = '';
+  else document.getElementById('admin-btn').style.display = 'none';
+  applyUserAccess();
+  initDashboard();
+}
+
+function doLogout() {
+  currentUser = null;
+  pendingPasswordChangeUser = null;
+  sessionStorage.removeItem('jcb_session');
+  allData = []; filteredData = [];
+  document.getElementById('login-user').value = '';
+  document.getElementById('login-pass').value = '';
+  document.getElementById('login-err').classList.remove('on');
+  document.getElementById('pwchange-screen').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('um-screen').classList.remove('on');
+  document.getElementById('tbody').innerHTML = `<tr><td colspan="13"><div class="empty-s"><div class="eico">📅</div><h4>No data yet</h4><p>Select a date range and click <strong>Fetch Attendance</strong></p></div></td></tr>`;
+  updateStats();
+}
+
+function applyUserAccess() {
+  if (!currentUser) return;
+  const u = currentUser;
+  const isAdmin = u.role === 'admin';
+
+  // ── Admin-only controls ──
+  const loadEmpBtn = document.getElementById('load-emp-btn');
+  const empPill    = document.getElementById('emp-pill');
+  if (!isAdmin) {
+    // Non-admins don't see Reload Employees or the employee count pill
+    if (loadEmpBtn) loadEmpBtn.style.display = 'none';
+    if (empPill)    empPill.style.display    = 'none';
+  } else {
+    if (loadEmpBtn) loadEmpBtn.style.display = '';
+    if (empPill)    empPill.style.display    = '';
+  }
+
+  // ── Sales Sheet URL bar visibility ──
+  // Admin always sees it. Non-admin sees it only if salesurl === 'yes'
+  const sdUrlRow = document.getElementById('sd-url-row');
+  if (sdUrlRow) {
+    sdUrlRow.style.display = (isAdmin || u.salesurl === 'yes') ? '' : 'none';
+  }
+
+  // ── Brand filter: lock dropdown + filter CENTERS dropdown ──
+  const ctrlSel = document.getElementById('center-select-ctrl');
+  const brandAllowed = u.brand; // 'both','JCB','Bounce'
+
+  // Disable/hide brand filter in table if restricted
+  const bFilter = document.getElementById('f-brand');
+  if (brandAllowed !== 'both') {
+    bFilter.value = brandAllowed;
+    bFilter.disabled = true;
+    // Hide the other brand options in fetch dropdown
+    [...ctrlSel.options].forEach(o => {
+      const og = o.closest('optgroup');
+      if (og) {
+        if (!og.label.includes(brandAllowed)) { o.disabled = true; o.style.display='none'; }
+      }
+    });
+    // Hide the optgroup itself
+    [...ctrlSel.querySelectorAll('optgroup')].forEach(og => {
+      if (!og.label.includes(brandAllowed)) og.style.display='none';
+    });
+    // Also hide "Both Brands" option
+    if (ctrlSel.options[1]) ctrlSel.options[1].style.display='none';
+  }
+
+  // ── Center restriction ──
+  if (u.centers && u.centers.length > 0) {
+    // Filter fetch dropdown to allowed centers only
+    [...ctrlSel.options].forEach(o => {
+      if (o.value && o.value !== '__ALL__') {
+        if (!u.centers.includes(o.dataset.code)) { o.disabled=true; o.style.display='none'; }
+      }
+    });
+  }
+
+  // ── Download control ──
+  const dlBtn = document.getElementById('dl-btn');
+  if (u.download !== 'yes') dlBtn.style.display = 'none';
+  else dlBtn.style.display = '';
+}
+
+// Override applyFilters to enforce user brand/center restrictions
+const _origApplyFilters = applyFilters;
+function applyFiltersWithAccess() {
+  _origApplyFilters();
+  if (!currentUser) return;
+  const u = currentUser;
+  if (u.brand !== 'both') {
+    filteredData = filteredData.filter(r => r.brand === u.brand);
+  }
+  if (u.centers && u.centers.length > 0) {
+    filteredData = filteredData.filter(r => u.centers.includes(r.centerCode));
+  }
+  updateStats();
+  renderTable();
+}
+// Monkey-patch
+window.applyFilters = applyFiltersWithAccess;
+
+// ── User Management ──
+async function openUM() {
+  if (!currentUser || currentUser.role !== 'admin') return;
+  document.getElementById('um-screen').classList.add('on');
+  // Pre-fill stored URL
+  document.getElementById('um-script-url').value = USER_MGMT_URL || '';
+  document.getElementById('um-sync-status').textContent = USER_MGMT_URL ? '🟢 URL configured' : '⚠️ Not configured — using local storage';
+  renderUMCenters();
+  renderUsersTable(); // render from cache first
+  // then refresh from online and re-render
+  const fresh = await fetchUsersOnline();
+  if (fresh !== null) renderUsersTable();
+}
+
+function saveUserMgmtUrl() {
+  const url = document.getElementById('um-script-url').value.trim();
+  if (!url) { alert('Please enter the Apps Script URL first.'); return; }
+  setUserMgmtUrl(url);
+  document.getElementById('um-sync-status').textContent = '🟢 URL saved — syncing…';
+  showInfo('🌐 Apps Script URL saved! User changes will now sync online.', 4000);
+  // Refresh from the new URL
+  fetchUsersOnline().then(fresh => {
+    if (fresh !== null) {
+      renderUsersTable();
+      document.getElementById('um-sync-status').textContent = `🟢 Online — ${fresh.length} user(s) loaded`;
+    } else {
+      document.getElementById('um-sync-status').textContent = '🔴 Could not reach Apps Script';
+    }
+  });
+}
+
+async function testUserMgmtUrl() {
+  const url = document.getElementById('um-script-url').value.trim();
+  if (!url) { alert('Enter the URL first.'); return; }
+  document.getElementById('um-sync-status').textContent = '⏳ Testing…';
+  try {
+    const resp = await fetch(url + '?action=list', { redirect:'follow' });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (!Array.isArray(data)) throw new Error('Response is not a JSON array');
+    document.getElementById('um-sync-status').textContent = `✅ Working — ${data.length} user(s) found`;
+    showInfo(`✅ Apps Script is reachable! Found ${data.length} user(s).`, 4000);
+  } catch(e) {
+    document.getElementById('um-sync-status').textContent = '🔴 Error: ' + e.message;
+    showInfo('❌ Apps Script test failed: ' + e.message, 6000);
+  }
+}
+function closeUM() { document.getElementById('um-screen').classList.remove('on'); }
+
+function renderUMCenters() {
+  const brand = document.getElementById('um-brand').value;
+  const grid = document.getElementById('um-centers-grid');
+  let list = [];
+  if (brand === 'JCB' || brand === 'both') list = list.concat(CENTERS_JCB);
+  if (brand === 'Bounce' || brand === 'both') list = list.concat(CENTERS_BOUNCE);
+  grid.innerHTML = list.map(c =>
+    `<label><input type="checkbox" class="um-center-cb" value="${c.code}"/> ${c.code} — ${c.name}</label>`
+  ).join('');
+}
+
+let editingUsername = null;
+
+function resetUMForm() {
+  editingUsername = null;
+  document.getElementById('um-form-title').textContent = '➕ Create New User';
+  document.getElementById('um-cancel-edit').style.display = 'none';
+  document.getElementById('um-username').value = '';
+  document.getElementById('um-password').value = '';
+  document.getElementById('um-fullname').value = '';
+  document.getElementById('um-role').value = 'user';
+  document.getElementById('um-brand').value = 'both';
+  document.getElementById('um-download').value = 'yes';
+  document.getElementById('um-salesurl').value = 'no';
+  renderUMCenters();
+}
+
+async function saveUser() {
+  const username = document.getElementById('um-username').value.trim();
+  const password = document.getElementById('um-password').value.trim();
+  const fullname = document.getElementById('um-fullname').value.trim();
+  const role     = document.getElementById('um-role').value;
+  const brand    = document.getElementById('um-brand').value;
+  const download = document.getElementById('um-download').value;
+  const centers  = [...document.querySelectorAll('.um-center-cb:checked')].map(cb => cb.value);
+  const salesurl = document.getElementById('um-salesurl').value;
+
+  if (!username) { alert('Username is required.'); return; }
+  if (username === SUPER_ADMIN.username) { alert('Cannot use reserved username "admin".'); return; }
+
+  let users = getUsers();
+
+  if (editingUsername) {
+    const idx = users.findIndex(u => u.username === editingUsername);
+    if (idx >= 0) {
+      users[idx] = { ...users[idx], username, fullname, role, brand, download, salesurl, centers };
+      // Admin manually setting a password while editing also forces a change on next login
+      if (password) { users[idx].password = password; users[idx].mustChangePassword = true; }
+    }
+  } else {
+    if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) { alert('Username already exists.'); return; }
+    // New users always start on the default password and must change it on first login
+    const initialPassword = password || DEFAULT_NEW_USER_PASSWORD;
+    users.push({
+      username, password: initialPassword, fullname, role, brand, download, salesurl, centers,
+      mustChangePassword: true,
+      lastPasswordChange: ''
+    });
+  }
+
+  await saveUsers(users);
+  resetUMForm();
+  renderUsersTable();
+  if (editingUsername) {
+    showInfo(`✅ User "${username}" updated successfully.`, 3000);
+  } else {
+    showInfo(`✅ User "${username}" created with default password "${DEFAULT_NEW_USER_PASSWORD}". They'll be asked to change it on first login.`, 6000);
+  }
+}
+
+function editUser(username) {
+  const users = getUsers();
+  const u = users.find(x => x.username === username);
+  if (!u) return;
+  editingUsername = username;
+  document.getElementById('um-form-title').textContent = `✏️ Edit User: ${username}`;
+  document.getElementById('um-cancel-edit').style.display = '';
+  document.getElementById('um-username').value = u.username;
+  document.getElementById('um-password').value = '';
+  document.getElementById('um-fullname').value = u.fullname||'';
+  document.getElementById('um-role').value = u.role||'user';
+  document.getElementById('um-brand').value = u.brand||'both';
+  document.getElementById('um-download').value = u.download||'yes';
+  document.getElementById('um-salesurl').value = u.salesurl||'no';
+  renderUMCenters();
+  // Tick the saved centers
+  setTimeout(()=>{
+    (u.centers||[]).forEach(code=>{
+      const cb = document.querySelector(`.um-center-cb[value="${code}"]`);
+      if(cb) cb.checked = true;
+    });
+  }, 50);
+  document.getElementById('um-form-title').scrollIntoView({behavior:'smooth'});
+}
+
+async function deleteUser(username) {
+  if (!confirm(`Delete user "${username}"? This cannot be undone.`)) return;
+  let users = getUsers().filter(u => u.username !== username);
+  await saveUsers(users);
+  renderUsersTable();
+}
+
+async function resetUserPassword(username) {
+  if (!confirm(`Reset "${username}"'s password back to the default ("${DEFAULT_NEW_USER_PASSWORD}")? They will be asked to set a new one on next login.`)) return;
+  let users = getUsers();
+  const idx = users.findIndex(u => u.username === username);
+  if (idx < 0) return;
+  users[idx].password = DEFAULT_NEW_USER_PASSWORD;
+  users[idx].mustChangePassword = true;
+  await saveUsers(users);
+  renderUsersTable();
+  showInfo(`✅ Password for "${username}" reset to default. They must set a new password on next login.`, 4000);
+}
+
+function renderUsersTable() {
+  const users = getUsers();
+  const tbody = document.getElementById('um-tbody');
+  document.getElementById('um-user-count').textContent = users.length + ' user' + (users.length===1?'':'s');
+
+  // Always show super admin row first
+  const allRows = [SUPER_ADMIN, ...users];
+  if (allRows.length === 1) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="um-empty">No users created yet. Use the form above.</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = allRows.map((u, i) => {
+    const isSuper = u.username === SUPER_ADMIN.username;
+    const brandTag = u.brand==='both'
+      ? `<span class="tag tag-both">Both Brands</span>`
+      : u.brand==='JCB'
+        ? `<span class="tag tag-jcb">JCB</span>`
+        : `<span class="tag tag-bounce">Bounce</span>`;
+    const roleTag = u.role==='admin'
+      ? `<span class="tag tag-admin">⭐ Admin</span>`
+      : `<span class="tag tag-center">User</span>`;
+    const dlTag = u.download==='yes'
+      ? `<span class="tag tag-dl-yes">✅ Yes</span>`
+      : `<span class="tag tag-dl-no">❌ No</span>`;
+    const suTag = u.salesurl==='yes'
+      ? `<span class="tag tag-dl-yes">👁 Visible</span>`
+      : `<span class="tag tag-dl-no">🔒 Hidden</span>`;
+    const centerTags = (!u.centers || u.centers.length===0)
+      ? `<span class="tag tag-both">All Centers</span>`
+      : u.centers.slice(0,4).map(c=>`<span class="tag tag-center">${c}</span>`).join('')
+        + (u.centers.length>4?`<span class="tag tag-center">+${u.centers.length-4} more</span>`:'');
+    const actions = isSuper
+      ? `<span style="font-size:11px;color:var(--gray-400)">Protected</span>`
+      : `<button class="ubtn ubtn-secondary" onclick="editUser('${u.username}')" style="padding:4px 10px;font-size:11px">✏️ Edit</button>
+         <button class="ubtn ubtn-secondary" onclick="resetUserPassword('${u.username}')" style="padding:4px 10px;font-size:11px;margin-left:4px">🔁 Reset Password</button>
+         <button class="ubtn ubtn-danger" onclick="deleteUser('${u.username}')" style="padding:4px 10px;font-size:11px;margin-left:4px">🗑 Delete</button>`;
+    const pwTag = isSuper
+      ? `<span class="tag tag-dl-yes">—</span>`
+      : (u.mustChangePassword
+          ? `<span class="tag tag-dl-no">⏳ Default (must change)</span>`
+          : `<span class="tag tag-dl-yes">✅ Changed</span>`);
+    return `<tr>
+      <td><code style="font-size:12px">${u.username}</code></td>
+      <td>${u.fullname||'—'}</td>
+      <td>${roleTag}</td>
+      <td>${brandTag}</td>
+      <td style="max-width:220px">${centerTags}</td>
+      <td>${dlTag}</td>
+      <td>${suTag}</td>
+      <td>${pwTag}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Init dashboard (called after login) ──
+function initDashboard() {
+  const t=new Date(), f=new Date(t.getFullYear(),t.getMonth(),1);
+  document.getElementById('start-date').value=fmt(f);
+  document.getElementById('end-date').value=fmt(t);
+  const saved = localStorage.getItem('appsScriptUrl');
+  if (saved) {
+    APPS_SCRIPT_URL = saved;
+    document.getElementById('apps-script-url-input').value = saved;
+  }
+  loadEmployeesFromSheet();
+  // Pre-fill Sales sheet URL — use the known published CSV, or a previously saved one
+  const KNOWN_SALES_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSkpSS-uP3xO53d2fDcpdHvdxIDvrtWUDVhizA7eV2JUCjLBp3mZi5qkyqDuDyp-w-pyx-Dr1AMkS9c/pub?gid=768078558&single=true&output=csv';
+  const savedSalesUrl = localStorage.getItem('jcb_sales_url') || KNOWN_SALES_CSV;
+  document.getElementById('sd-sheet-url').value = savedSalesUrl;
+  localStorage.setItem('jcb_sales_url', savedSalesUrl);
+  // Auto-load sales data in background so non-admin users see data without clicking Load
+  setTimeout(() => { if (!salesData.length) loadSalesData(true); }, 800);
+  // Auto-load headcount data in background too
+  setTimeout(() => { if (!hcData.length) loadHeadcountData(); }, 1200);
+}
+
+// ── Init ── restore session or show login
+(async function(){
+  // Try to restore session from sessionStorage (survives refresh, not new tab)
+  const saved = sessionStorage.getItem('jcb_session');
+  if (saved) {
+    try {
+      const matched = JSON.parse(saved);
+      // Refresh user list silently, then re-validate user still exists
+      await fetchUsersOnline();
+      const isAdmin = matched.username === SUPER_ADMIN.username;
+      const users = getUsers();
+      const stillValid = isAdmin || users.find(u => u.username === matched.username);
+      if (stillValid) {
+        activateUser(matched);
+        return;
+      }
+    } catch(e) { /* fall through to login */ }
+    sessionStorage.removeItem('jcb_session');
+  }
+  setTimeout(()=>{ const el=document.getElementById('login-user'); if(el) el.focus(); }, 100);
+})();
+
+// ══════════════════════════════════════════════════════
+// SALES PRODUCTIVITY DASHBOARD
+// ══════════════════════════════════════════════════════
+let salesData = []; // flat rows: {empCode,empName,designation,salon,brand,category,yearNum,month,value}
+const SD_MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+const SD_CATS = ['SERVICE SALES','SERVICE ABV','NEW CLIENTS SERVICES','EXISTING CLIENTS SERVICES',
+  'TOTAL CLIENTS SERVICES','PRODUCT SALES','PRODUCT ABV','TOTAL CLIENTS PRODUCT','3 MONTH REPEAT CLIENTS','RETENTION %'];
+const SD_COLORS = ['#00A86B','#1a5fa8','#f59e0b','#7c3aed','#ef4444','#06b6d4','#f97316','#84cc16','#ec4899','#6b7280'];
+
+function sdSaveUrl() {
+  const url = document.getElementById('sd-sheet-url').value.trim();
+  if (!url) return;
+  localStorage.setItem('jcb_sales_url', url);
+  showInfo('Sales sheet URL saved.', 2000);
+}
+
+async function loadSalesData(silent) {
+  let csvUrl = document.getElementById('sd-sheet-url').value.trim();
+  if (!csvUrl) csvUrl = localStorage.getItem('jcb_sales_url') || '';
+  if (!csvUrl) { showInfo('⚠ Please enter the Sales sheet published CSV URL first.', 4000); return; }
+  document.getElementById('sd-sheet-url').value = csvUrl;
+  localStorage.setItem('jcb_sales_url', csvUrl);
+
+  const pill = document.getElementById('sd-status');
+  if (!silent) {
+    pill.style.display = '';
+    pill.textContent = '⏳ Loading…';
+    document.getElementById('sd-body').innerHTML = '<div class="sd-no-data"><div class="eico">⏳</div><p>Loading sales data…</p></div>';
+  }
+
+  async function fetchCSV() {
+    // Try Apps Script proxy first (works from file://)
+    if (APPS_SCRIPT_URL) {
+      try {
+        const proxyUrl = APPS_SCRIPT_URL + '?action=sales&url=' + encodeURIComponent(csvUrl);
+        const r = await fetch(proxyUrl, { redirect: 'follow' });
+        if (r.ok) {
+          const txt = await r.text();
+          if (txt && !txt.trim().startsWith('<')) return txt;
+        }
+      } catch(e) { /* fall through */ }
+    }
+    // Direct fetch fallback
+    const r = await fetch(csvUrl, { redirect: 'follow' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text();
+    if (!txt || txt.trim().startsWith('<')) throw new Error('Got HTML instead of CSV — ensure the sheet is published as CSV');
+    return txt;
+  }
+
+  let rawCSV = '';
+  try {
+    rawCSV = await fetchCSV();
+  } catch(e) {
+    pill.textContent = '❌ Fetch failed';
+    document.getElementById('sd-body').innerHTML = `<div class="sd-no-data">
+      <div class="eico">❌</div><p><strong>Could not fetch CSV</strong></p>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px;max-width:560px">${e.message}</p>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">Make sure your Apps Script is deployed with the <code>action=sales</code> handler.</p>
+    </div>`;
+    return;
+  }
+
+  // ── Debug: inspect raw CSV before parsing ──
+  function stripQ(s) { return (s||'').replace(/^"|"$/g,'').trim(); }
+  const allLines = rawCSV.split('\n').map(l=>l.trim()).filter(Boolean);
+  const rawHeaders = allLines.length > 0 ? splitCSVLine(allLines[0]).map(stripQ) : [];
+
+  // Collect all unique values in every column named CATEGORY
+  const catColIdxs = rawHeaders.map((h,i) => h.toUpperCase()==='CATEGORY' ? i : -1).filter(i=>i>=0);
+  const foundCats = new Set();
+  for (let i = 1; i < Math.min(allLines.length, 200); i++) {
+    const cols = splitCSVLine(allLines[i]).map(stripQ);
+    catColIdxs.forEach(ci => { if (cols[ci]) foundCats.add(cols[ci]); });
+  }
+
+  salesData = parseSalesCSV(rawCSV);
+
+  if (!salesData.length) {
+    pill.textContent = '⚠ 0 rows — check categories';
+    // Show diagnostic
+    const headerList = rawHeaders.map((h,i)=>`<span style="background:var(--gray-100);border:1px solid var(--gray-200);border-radius:4px;padding:2px 6px;font-size:10px;font-family:monospace">[${i}] ${h||'(empty)'}</span>`).join(' ');
+    const catList = [...foundCats].map(c => {
+      const matched = SD_CATS.includes(c.toUpperCase());
+      return `<span style="background:${matched?'#dcfce7':'#fee2e2'};border:1px solid ${matched?'#86efac':'#fca5a5'};border-radius:4px;padding:2px 7px;font-size:11px;font-family:monospace">${c}</span>`;
+    }).join(' ');
+    const expectedCats = SD_CATS.map(c=>`<span style="background:var(--blue-light);color:var(--blue);border-radius:4px;padding:2px 7px;font-size:11px;font-family:monospace">${c}</span>`).join(' ');
+
+    document.getElementById('sd-body').innerHTML = `
+      <div style="padding:20px 24px;max-width:800px;margin:0 auto">
+        <div style="background:#fff8e1;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin-bottom:16px">
+          <strong style="font-size:13px;color:#92400e">⚠ CSV fetched successfully (${allLines.length} lines) but 0 rows matched the expected CATEGORY values.</strong>
+        </div>
+
+        <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:10px;padding:16px 20px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:10px">📋 Headers found in your CSV (${rawHeaders.length} columns):</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;line-height:2">${headerList || '<em style="color:var(--gray-400)">No headers found</em>'}</div>
+        </div>
+
+        <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:10px;padding:16px 20px;margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:10px">🔍 Values found in CATEGORY column(s) — <span style="color:#15803d">green = matched</span>, <span style="color:#dc2626">red = not matched</span>:</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;line-height:2.2">${catList || '<em style="color:var(--gray-400)">No CATEGORY column found — column name may differ</em>'}</div>
+        </div>
+
+        <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:10px;padding:16px 20px">
+          <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:10px">✅ Expected CATEGORY values (dashboard looks for these exactly):</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;line-height:2.2">${expectedCats}</div>
+          <p style="font-size:11px;color:var(--gray-400);margin-top:12px">If your sheet uses different names, either update the sheet to match these exact values, or share the actual category names above so the dashboard can be updated to match your sheet.</p>
+        </div>
+
+        <div style="margin-top:14px;background:var(--gray-800);color:#a5f3c4;border-radius:8px;padding:12px 14px;font-size:11px;font-family:monospace">
+          Raw first line of CSV:<br>${esc(allLines[0]||'(empty)')}
+        </div>
+      </div>`;
+    return;
+  }
+
+  pill.textContent = '✅ ' + salesData.length + ' rows';
+  populateSalesFilters();
+  renderSalesDashboard();
+}
+
+function parseSalesCSV(csv) {
+  const lines = csv.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return [];
+
+  function stripQ(s) { return (s||'').replace(/^"|"$/g,'').trim(); }
+
+  const rawHeaders = splitCSVLine(lines[0]).map(h => stripQ(h).toUpperCase());
+  const rows = [];
+
+  const col  = (name) => rawHeaders.indexOf(name);
+  const colL = (name) => rawHeaders.lastIndexOf(name);
+
+  // CSV columns: Salon | Designation | Category(Hair/Skin) | Tenure | EmployeeCode | EmployeeName
+  //              | Category(SERVICE SALES…) | YearNum | JAN…DEC | Brand
+  const iSalon    = col('SALON');
+  const iDesig    = col('DESIGNATION');
+  const iHairCat  = col('CATEGORY');           // FIRST Category = Hair / Skin
+  const iTenure   = col('TENURE');
+  const iEmpCode  = col('EMPLOYEECODE') >= 0 ? col('EMPLOYEECODE') : col('EMPLOYEE CODE');
+  const iEmpName  = col('EMPLOYEENAME') >= 0 ? col('EMPLOYEENAME') : col('EMPLOYEE NAME');
+  const iCatLast  = colL('CATEGORY');          // LAST Category = SERVICE SALES / PRODUCT ABV etc.
+  const iYear     = col('YEARNUM') >= 0 ? col('YEARNUM') : col('YEAR');
+  const iBrand    = col('BRAND');
+
+  for (let i = 1; i < lines.length; i++) {
+    const cols = splitCSVLine(lines[i]).map(stripQ);
+    if (cols.length < 5) continue;
+
+    const category = iCatLast >= 0 ? cols[iCatLast] : '';
+    if (!SD_CATS.includes(category.toUpperCase())) continue;
+
+    const empCode    = iEmpCode  >= 0 ? cols[iEmpCode]  : '';
+    const empName    = iEmpName  >= 0 ? cols[iEmpName]  : '';
+    const salon      = iSalon    >= 0 ? cols[iSalon]    : '';
+    const designation= iDesig    >= 0 ? cols[iDesig]    : '';
+    const hairCat    = iHairCat  >= 0 ? cols[iHairCat]  : '';  // Hair / Skin
+    const tenure     = iTenure   >= 0 ? (parseFloat(cols[iTenure]) || 0) : 0;
+    const brand      = iBrand    >= 0 ? cols[iBrand]    : '';
+    const yearNum    = iYear     >= 0 ? (parseInt(cols[iYear]) || 0) : 0;
+    const categoryNorm = category.toUpperCase();
+
+    SD_MONTHS.forEach(m => {
+      const mIdx = col(m);
+      const val = mIdx >= 0 ? (parseFloat((cols[mIdx]||'0').replace(/,/g,'')) || 0) : 0;
+      rows.push({ empCode, empName, designation, salon, hairCat, tenure, brand, category: categoryNorm, yearNum, month: m, value: val });
+    });
+  }
+  return rows;
+}
+
+function splitCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQ && line[i+1] === '"') { cur += '"'; i++; } // escaped quote
+      else inQ = !inQ;
+    } else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ══════════════════════════════════════════════════════
+// MULTI-SELECT CHECKBOX DROPDOWN WIDGET
+// ══════════════════════════════════════════════════════
+function toggleMs(id) {
+  const wrap = document.getElementById(id);
+  const dd = wrap.querySelector('.ms-dropdown');
+  const isOpen = dd.classList.contains('open');
+  // Close all open dropdowns first
+  document.querySelectorAll('.ms-dropdown.open').forEach(d => d.classList.remove('open'));
+  if (!isOpen) dd.classList.add('open');
+}
+// Close dropdowns when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-dropdown.open').forEach(d => d.classList.remove('open'));
+  }
+});
+function msFilter(input, id) {
+  const q = input.value.toLowerCase();
+  document.querySelectorAll(`#${id} .ms-item`).forEach(item => {
+    item.style.display = item.querySelector('label').textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+function msSelectAll(id) {
+  document.querySelectorAll(`#${id} .ms-item input`).forEach(cb => cb.checked = true);
+  msUpdate(id); renderSalesDashboard();
+}
+function msClearAll(id) {
+  document.querySelectorAll(`#${id} .ms-item input`).forEach(cb => cb.checked = false);
+  msUpdate(id); renderSalesDashboard();
+}
+function msGetSelected(id) {
+  return [...document.querySelectorAll(`#${id} .ms-item input:checked`)].map(cb => cb.value);
+}
+function msUpdate(id) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return;
+  const selected = msGetSelected(id);
+  const total = wrap.querySelectorAll('.ms-item').length;
+  const btn = wrap.querySelector('.ms-label');
+  if (!btn) return;
+  if (selected.length === 0 || selected.length === total) {
+    btn.textContent = wrap.dataset.allLabel || 'All';
+    const cntEl = wrap.querySelector('.ms-count');
+    if (cntEl) cntEl.remove();
+  } else {
+    btn.textContent = selected.length === 1 ? selected[0] : selected[0] + '…';
+    let cntEl = wrap.querySelector('.ms-count');
+    if (!cntEl) { cntEl = document.createElement('span'); cntEl.className = 'ms-count'; wrap.querySelector('.ms-btn').insertBefore(cntEl, wrap.querySelector('.ms-arrow')); }
+    cntEl.textContent = selected.length;
+  }
+}
+function msBuildList(id, items, labelFn) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return;
+  wrap.dataset.allLabel = wrap.querySelector('.ms-label').textContent;
+  const list = wrap.querySelector('.ms-list');
+  list.innerHTML = items.map(v => {
+    const lbl = labelFn ? labelFn(v) : v;
+    return `<div class="ms-item"><input type="checkbox" value="${esc(v)}" checked onchange="msUpdate('${id}');renderSalesDashboard()"/><label>${esc(lbl)}</label></div>`;
+  }).join('');
+  msUpdate(id);
+}
+
+function populateSalesFilters() {
+  const uniq = (key) => [...new Set(salesData.map(r => r[key]))].filter(Boolean).sort();
+
+  msBuildList('ms-brand',   uniq('brand'));
+  msBuildList('ms-salon',   uniq('salon'));
+  msBuildList('ms-desig',   uniq('designation'));
+  msBuildList('ms-haircat', uniq('hairCat'));
+  // Employee: show name (code)
+  const empMap = new Map();
+  salesData.forEach(r => { if (r.empCode && !empMap.has(r.empCode)) empMap.set(r.empCode, r.empName); });
+  const empEntries = [...empMap.entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+  msBuildList('ms-emp', empEntries.map(([code]) => code), code => `${empMap.get(code)} (${code})`);
+
+  const years = [...new Set(salesData.map(r => r.yearNum))].filter(Boolean).sort();
+  msBuildList('ms-year', years.map(String));
+
+  msBuildList('ms-month', SD_MONTHS);
+}
+
+function filterSales() {
+  const brands  = new Set(msGetSelected('ms-brand'));
+  const salons  = new Set(msGetSelected('ms-salon'));
+  const desigs  = new Set(msGetSelected('ms-desig'));
+  const hcats   = new Set(msGetSelected('ms-haircat'));
+  const emps    = new Set(msGetSelected('ms-emp'));
+  const years   = new Set(msGetSelected('ms-year'));
+  const months  = new Set(msGetSelected('ms-month'));
+  const allBrands  = brands.size === 0  || brands.size  === document.querySelectorAll('#ms-brand .ms-item').length;
+  const allSalons  = salons.size === 0  || salons.size  === document.querySelectorAll('#ms-salon .ms-item').length;
+  const allDesigs  = desigs.size === 0  || desigs.size  === document.querySelectorAll('#ms-desig .ms-item').length;
+  const allHcats   = hcats.size  === 0  || hcats.size   === document.querySelectorAll('#ms-haircat .ms-item').length;
+  const allEmps    = emps.size   === 0  || emps.size    === document.querySelectorAll('#ms-emp .ms-item').length;
+  const allYears   = years.size  === 0  || years.size   === document.querySelectorAll('#ms-year .ms-item').length;
+  const allMonths  = months.size === 0  || months.size  === document.querySelectorAll('#ms-month .ms-item').length;
+  return salesData.filter(r =>
+    (allBrands  || brands.has(r.brand)) &&
+    (allSalons  || salons.has(r.salon)) &&
+    (allDesigs  || desigs.has(r.designation)) &&
+    (allHcats   || hcats.has(r.hairCat)) &&
+    (allEmps    || emps.has(r.empCode)) &&
+    (allYears   || years.has(String(r.yearNum))) &&
+    (allMonths  || months.has(r.month))
+  );
+}
+
+function sdSum(rows, cat, month, empCode) {
+  return rows.filter(r =>
+    r.category === cat &&
+    (!month   || r.month === month) &&
+    (!empCode || r.empCode === empCode)
+  ).reduce((s,r) => s + r.value, 0);
+}
+
+function fmtN(n, cat) {
+  if (cat === 'RETENTION %' || cat === 'SERVICE ABV' || cat === 'PRODUCT ABV') return n.toFixed(1);
+  if (n >= 1e7) return (n/1e7).toFixed(1) + 'Cr';
+  if (n >= 1e5) return (n/1e5).toFixed(1) + 'L';
+  if (n >= 1e3) return (n/1e3).toFixed(1) + 'K';
+  return Math.round(n).toString();
+}
+
+function renderSalesDashboard() {
+  if (!salesData.length) return;
+  const metric   = document.getElementById('sd-metric').value;
+  const filtered = filterSales();
+  const html     = [];
+
+  // ── Employee Leaderboard Table (grouped by empCode, sorted by year within each group) ──
+  // Build a map: key = empCode|year
+  const empYearMap = new Map();
+  filtered.filter(r => r.category === metric).forEach(r => {
+    const key = `${r.empCode}|||${r.yearNum}`;
+    if (!empYearMap.has(key)) {
+      empYearMap.set(key, { ec: r.empCode, name: r.empName, desig: r.designation, salon: r.salon, brand: r.brand, tenure: r.tenure, year: r.yearNum, months: {} });
+    }
+    const entry = empYearMap.get(key);
+    entry.months[r.month] = (entry.months[r.month] || 0) + r.value;
+  });
+
+  const empYearRows = [...empYearMap.values()].map(e => {
+    e.total = SD_MONTHS.reduce((s, m) => s + (e.months[m] || 0), 0);
+    return e;
+  }).filter(e => e.total > 0);
+
+  // Group by empCode; sort groups by max total desc, years asc within group
+  const empGroups = new Map();
+  empYearRows.forEach(r => {
+    if (!empGroups.has(r.ec)) empGroups.set(r.ec, []);
+    empGroups.get(r.ec).push(r);
+  });
+  empGroups.forEach(rows => rows.sort((a, b) => a.year - b.year));
+  const groupsSorted = [...empGroups.entries()].sort((a, b) => {
+    const aMax = Math.max(...a[1].map(r => r.total));
+    const bMax = Math.max(...b[1].map(r => r.total));
+    return bMax - aMax;
+  });
+
+  const showGrowth = window._showGrowthRows !== false;
+  const totalEmpRows = groupsSorted.reduce((s, [, rows]) => s + rows.length, 0);
+  const uniqueEmps = groupsSorted.length;
+
+  if (totalEmpRows > 0) {
+    const allTotals = empYearRows.map(r => r.total);
+    const maxE = Math.max(...allTotals);
+    html.push(`<div class="sd-section">
+      <div class="sd-section-head">
+        <h3>\u{1F3C6} Employee Leaderboard \u2014 ${metric}</h3>
+        <span style="font-size:11px;color:var(--gray-400)">${uniqueEmps} employees &middot; ${totalEmpRows} rows</span>
+      </div>
+      <div class="sd-table-wrap"><table class="sd-table lb">
+      <thead><tr>
+        <th>#</th>
+        <th onclick="sortSdTable(this)">Brand \u21D5</th>
+        <th onclick="sortSdTable(this)">Salon \u21D5</th>
+        <th onclick="sortSdTable(this)">Employee \u21D5</th>
+        <th onclick="sortSdTable(this)">Designation \u21D5</th>
+        <th onclick="sortSdTable(this)">Tenure \u21D5</th>
+        <th onclick="sortSdTable(this)">Year \u21D5</th>
+        ${SD_MONTHS.map(m => `<th onclick="sortSdTable(this)">${m}</th>`).join('')}
+        <th onclick="sortSdTable(this)">TOTAL \u21D5</th>
+      </tr></thead><tbody>`);
+
+    let rankIdx = 0;
+    groupsSorted.forEach(([ec, yearRows]) => {
+      rankIdx++;
+      const scoreClass = rankIdx <= Math.ceil(groupsSorted.length * 0.33) ? 'hi' : rankIdx <= Math.ceil(groupsSorted.length * 0.66) ? 'mid' : 'lo';
+
+      yearRows.forEach((r, yi) => {
+        const monthCells = SD_MONTHS.map(m => {
+          const v = r.months[m] || 0;
+          return `<td>${v > 0 ? fmtN(v, metric) : '\u2014'}</td>`;
+        }).join('');
+        const pct = Math.round((r.total / maxE) * 100);
+        const brandTag = r.brand === 'JCB'
+          ? `<span style="background:#dbeafe;color:#1e40af;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">${r.brand}</span>`
+          : r.brand === 'Bounce'
+          ? `<span style="background:#fce7f3;color:#9d174d;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:700">${r.brand}</span>`
+          : `<span style="background:var(--gray-100);color:var(--gray-600);border-radius:4px;padding:2px 7px;font-size:10px">${r.brand || '\u2014'}</span>`;
+
+        // Only show rank/brand/salon/name/desig/tenure on first year row
+        const isFirst = yi === 0;
+        const rankCell   = isFirst ? `<td rowspan="${yearRows.length}"><span class="sd-score ${scoreClass}">#${rankIdx}</span></td>` : '';
+        const brandCell  = isFirst ? `<td rowspan="${yearRows.length}">${brandTag}</td>` : '';
+        const salonCell  = isFirst ? `<td rowspan="${yearRows.length}" style="font-size:12px">${r.salon || '\u2014'}</td>` : '';
+        const nameCell   = isFirst ? `<td rowspan="${yearRows.length}" style="font-size:12px;font-weight:600">${r.name}</td>` : '';
+        const desigCell  = isFirst ? `<td rowspan="${yearRows.length}" style="font-size:12px">${r.desig || '\u2014'}</td>` : '';
+        const tenureCell = isFirst ? `<td rowspan="${yearRows.length}" style="font-size:12px">${r.tenure > 0 ? r.tenure.toFixed(1) + 'y' : '\u2014'}</td>` : '';
+        const topBorder  = isFirst ? '' : 'border-top:1px dashed var(--gray-200);';
+
+        html.push(`<tr style="${topBorder}">
+          ${rankCell}${brandCell}${salonCell}${nameCell}${desigCell}${tenureCell}
+          <td><span style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700">${r.year || '\u2014'}</span></td>
+          ${monthCells}
+          <td><strong>${fmtN(r.total, metric)}</strong>
+            <div style="height:3px;border-radius:2px;background:${SD_COLORS[0]};width:${pct}%;margin-top:3px;opacity:.7"></div>
+          </td>
+        </tr>`);
+      });
+
+      // % Growth row — month-on-month between years (only if 2+ years and toggle ON)
+      if (showGrowth && yearRows.length >= 2) {
+        // Compare last year vs first year month by month
+        const y1 = yearRows[yearRows.length - 2]; // prev year
+        const y2 = yearRows[yearRows.length - 1]; // latest year
+        const growthCells = SD_MONTHS.map(m => {
+          const v1 = y1.months[m] || 0;
+          const v2 = y2.months[m] || 0;
+          if (v1 === 0 && v2 === 0) return '<td style="color:var(--gray-300);font-size:10px">—</td>';
+          if (v1 === 0) return '<td style="font-size:10px;color:var(--gray-400)">NEW</td>';
+          const g = ((v2 - v1) / v1) * 100;
+          const color = g >= 0 ? '#166534' : '#991b1b';
+          const bg    = g >= 0 ? '#dcfce7' : '#fee2e2';
+          const arrow = g >= 0 ? '▲' : '▼';
+          return `<td><span style="background:${bg};color:${color};border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;white-space:nowrap">${arrow} ${g > 0 ? '+' : ''}${g.toFixed(0)}%</span></td>`;
+        }).join('');
+        // Total growth
+        const t1 = y1.total, t2 = y2.total;
+        let totGrowth = '<td style="color:var(--gray-300)">—</td>';
+        if (t1 > 0) {
+          const g = ((t2 - t1) / t1) * 100;
+          const color = g >= 0 ? '#166534' : '#991b1b';
+          const bg    = g >= 0 ? '#dcfce7' : '#fee2e2';
+          const arrow = g >= 0 ? '▲' : '▼';
+          totGrowth = `<td><strong><span style="background:${bg};color:${color};border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700;white-space:nowrap">${arrow} ${g > 0 ? '+' : ''}${g.toFixed(1)}%</span></strong></td>`;
+        }
+        html.push(`<tr class="growth-row" style="background:#fffbeb;border-top:none;">
+          <td colspan="6" style="font-size:10px;color:var(--amber);font-weight:700;text-align:right;padding-right:6px;border-top:none">% vs ${y1.year}</td>
+          <td style="font-size:10px;color:var(--gray-400);border-top:none">${y1.year}→${y2.year}</td>
+          ${growthCells}
+          ${totGrowth}
+        </tr>`);
+      }
+    });
+    html.push('</tbody></table></div></div>');
+  } else {
+    html.push('<div class="sd-no-data"><div class="eico">\u{1F50D}</div><p>No data for current filters.</p></div>');
+  }
+
+  document.getElementById('sd-body').innerHTML = html.join('');
+}
+
+let _showGrowthRows = true;
+window._showGrowthRows = true;
+
+function toggleGrowthRows() {
+  _showGrowthRows = !_showGrowthRows;
+  window._showGrowthRows = _showGrowthRows;
+  const tog = document.getElementById('toggle-growth');
+  const thumb = document.getElementById('toggle-thumb');
+  const lbl = document.getElementById('toggle-growth-label');
+  if (_showGrowthRows) {
+    tog.style.background = 'var(--green)';
+    thumb.style.left = '20px';
+    lbl.textContent = 'On';
+  } else {
+    tog.style.background = 'var(--gray-300)';
+    thumb.style.left = '2px';
+    lbl.textContent = 'Off';
+  }
+  renderSalesDashboard();
+}
+
+function sortSdTable(th) {
+  const table = th.closest('table');
+  const tbody = table.querySelector('tbody');
+  const idx = [...th.parentElement.children].indexOf(th);
+  const asc = th.dataset.asc === '1';
+  th.dataset.asc = asc ? '0' : '1';
+  const rows = [...tbody.querySelectorAll('tr')];
+  rows.sort((a, b) => {
+    const av = a.children[idx]?.textContent.replace(/[^0-9.-]/g,'') || '0';
+    const bv = b.children[idx]?.textContent.replace(/[^0-9.-]/g,'') || '0';
+    return asc ? parseFloat(av)-parseFloat(bv) : parseFloat(bv)-parseFloat(av);
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
+
+// ══════════════════════════════════════════════════════
+// HEADCOUNT DASHBOARD  (reads HRMASTER tab)
+// ══════════════════════════════════════════════════════
+// Expected HRMASTER columns (0-indexed), matching the live sheet:
+// A=0 EmployeeID, B=1 Employee Name, C=2 Date of joining, D=3 Department,
+// E=4 Designation, F=5 Salon, G=6 Status, H=7 City, I=8 Tenure,
+// J=9 Salary, K=10 HR Name, L=11 Brand, M=12 Gender
+
+let hcData = [];        // all rows incl inactive: {id,name,joinDate,dept,desig,salon,status,city,tenure,salary,hrName,brand,gender}
+let hcLoaded = false;
+let hcRawHeader = [];
+const HC_COLORS = ['#00A86B','#1a5fa8','#f59e0b','#7c3aed','#ec4899','#06b6d4','#f97316','#84cc16','#ef4444','#6b7280','#0ea5e9','#a855f7'];
+
+async function loadHeadcountData() {
+  const pill = document.getElementById('hc-status');
+  pill.style.display = '';
+  pill.textContent = '⏳ Loading…';
+  document.getElementById('hc-body').innerHTML = '<div class="sd-no-data"><div class="eico">⏳</div><p>Loading headcount data…</p></div>';
+
+  try {
+    const url = APPS_SCRIPT_URL + '?action=hrmaster';
+    const r = await fetch(url, { redirect: 'follow' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text();
+    if (!txt || txt.trim().startsWith('<')) throw new Error('Got HTML instead of CSV — check the action=hrmaster handler is deployed');
+    hcData = parseHrmasterCSV(txt);
+    hcRawHeader = splitCSVLine((txt.split('\n')[0]||'').replace(/\r$/,'')).map(s => (s||'').replace(/^"|"$/g,'').trim());
+    if (!hcData.length) throw new Error('0 rows parsed — check column layout');
+    hcLoaded = true;
+    pill.textContent = `✓ ${hcData.length.toLocaleString()} employees`;
+    populateHeadcountFilters();
+    renderHeadcountDashboard();
+  } catch(e) {
+    pill.textContent = '❌ Fetch failed';
+    document.getElementById('hc-body').innerHTML = `<div class="sd-no-data">
+      <div class="eico">❌</div><p><strong>Could not load HRMASTER data</strong></p>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px;max-width:560px;margin-left:auto;margin-right:auto">${esc(e.message)}</p>
+      <p style="font-size:12px;color:var(--gray-500);margin-top:8px">Add an <code>action === 'hrmaster'</code> branch to your Apps Script's doGet that returns the HRMASTER sheet as CSV — see chat for the exact code.</p>
+    </div>`;
+  }
+}
+
+function parseHrmasterCSV(csv) {
+  const lines = csv.split('\n').map(l => l.replace(/\r$/,'')).filter(l => l.trim().length);
+  if (lines.length < 2) return [];
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const c = splitCSVLine(lines[i]).map(s => (s||'').replace(/^"|"$/g,'').trim());
+    if (!c[0] && !c[1]) continue;
+    rows.push({
+      id:       c[0]  || '',
+      name:     c[1]  || '',
+      joinDate: c[2]  || '',
+      dept:     c[3]  || 'Unspecified',
+      desig:    c[4]  || 'Unspecified',
+      salon:    c[5]  || 'Unspecified',
+      status:   c[6]  || 'Active',
+      city:     c[7]  || 'Unspecified',
+      tenure:   parseFloat(c[8]) || 0,
+      salary:   parseFloat((c[9]||'').replace(/[^0-9.\-]/g,'')) || 0,
+      hrName:   c[10] || '',
+      brand:    c[11] || 'Unspecified',
+      gender:   (c[12]||'').trim() || 'Unspecified'
+    });
+  }
+  return rows;
+}
+
+function populateHeadcountFilters() {
+  let active = hcData.filter(r => (r.status||'').toLowerCase() === 'active');
+  if (!active.length) active = hcData; // fallback so filters aren't empty while diagnosing
+  const uniq = key => [...new Set(active.map(r => r[key]))].filter(Boolean).sort();
+  msBuildListCustom('ms-hc-brand', uniq('brand'), renderHeadcountDashboard);
+  msBuildListCustom('ms-hc-salon', uniq('salon'), renderHeadcountDashboard);
+  msBuildListCustom('ms-hc-dept',  uniq('dept'),  renderHeadcountDashboard);
+  msBuildListCustom('ms-hc-city',  uniq('city'),  renderHeadcountDashboard);
+}
+
+// Like msBuildList but lets us pass a custom re-render callback instead of renderSalesDashboard
+function msBuildListCustom(id, items, cb) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return;
+  wrap.dataset.allLabel = wrap.querySelector('.ms-label').textContent;
+  const list = wrap.querySelector('.ms-list');
+  list.innerHTML = items.map(v =>
+    `<div class="ms-item"><input type="checkbox" value="${esc(v)}" checked onchange="msUpdate('${id}');${cb.name}()"/><label>${esc(v)}</label></div>`
+  ).join('');
+  msUpdate(id);
+}
+
+function filterHeadcount() {
+  const active = hcData.filter(r => (r.status||'').toLowerCase() === 'active');
+  const brands = new Set(msGetSelected('ms-hc-brand'));
+  const salons = new Set(msGetSelected('ms-hc-salon'));
+  const depts  = new Set(msGetSelected('ms-hc-dept'));
+  const cities = new Set(msGetSelected('ms-hc-city'));
+  const allBrands = brands.size === 0 || brands.size === document.querySelectorAll('#ms-hc-brand .ms-item').length;
+  const allSalons = salons.size === 0 || salons.size === document.querySelectorAll('#ms-hc-salon .ms-item').length;
+  const allDepts  = depts.size  === 0 || depts.size  === document.querySelectorAll('#ms-hc-dept .ms-item').length;
+  const allCities = cities.size === 0 || cities.size === document.querySelectorAll('#ms-hc-city .ms-item').length;
+  return active.filter(r =>
+    (allBrands || brands.has(r.brand)) &&
+    (allSalons || salons.has(r.salon)) &&
+    (allDepts  || depts.has(r.dept)) &&
+    (allCities || cities.has(r.city))
+  );
+}
+
+function hcGroupCount(rows, key) {
+  const m = new Map();
+  rows.forEach(r => { const k = r[key] || 'Unspecified'; m.set(k, (m.get(k)||0)+1); });
+  return [...m.entries()].sort((a,b) => b[1]-a[1]);
+}
+
+function hcBarRows(groups, total, colorFor, onClickFilter) {
+  const max = Math.max(...groups.map(g => g[1]), 1);
+  return groups.map(([name, count], i) => {
+    const pct = total ? ((count/total)*100).toFixed(1) : '0.0';
+    const widthPct = (count/max*100).toFixed(1);
+    const color = colorFor ? colorFor(name, i) : HC_COLORS[i % HC_COLORS.length];
+    const clickAttr = onClickFilter ? ` onclick="${onClickFilter}('${esc(name).replace(/'/g,"\\'")}')"` : '';
+    return `<div class="hc-bar-row">
+      <div class="hc-bar-name" title="${esc(name)}"${clickAttr}>${esc(name)}</div>
+      <div class="hc-bar-track"><div class="hc-bar-fill" style="width:${widthPct}%;background:${color}"></div></div>
+      <div class="hc-bar-val">${count} <span style="color:var(--gray-400);font-weight:500;font-size:10px">(${pct}%)</span></div>
+    </div>`;
+  }).join('');
+}
+
+function hcDonutSVG(groups, total) {
+  const r = 52, cx = 60, cy = 60, circumference = 2 * Math.PI * r;
+  let offset = 0;
+  const segs = groups.map(([name, count], i) => {
+    const frac = total ? count/total : 0;
+    const dash = frac * circumference;
+    const seg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${HC_COLORS[i%HC_COLORS.length]}" stroke-width="18"
+      stroke-dasharray="${dash.toFixed(2)} ${(circumference-dash).toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += dash;
+    return seg;
+  }).join('');
+  return `<svg width="130" height="130" viewBox="0 0 120 120">${segs}
+    <circle cx="${cx}" cy="${cy}" r="34" fill="var(--white)"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="20" font-weight="800" fill="var(--gray-800)">${total}</text>
+    <text x="${cx}" y="${cy+13}" text-anchor="middle" font-size="9" fill="var(--gray-400)" font-weight="600">TOTAL</text>
+  </svg>`;
+}
+
+function hcLegend(groups, total) {
+  return groups.map(([name,count],i) => {
+    const pct = total ? ((count/total)*100).toFixed(1) : '0.0';
+    return `<div class="hc-legend-item"><span class="hc-legend-dot" style="background:${HC_COLORS[i%HC_COLORS.length]}"></span>
+      <span>${esc(name)}: <span class="hc-legend-val">${count}</span> <span style="color:var(--gray-400)">(${pct}%)</span></span></div>`;
+  }).join('');
+}
+
+function hcSetFilter(field, value) {
+  // helper for click-to-drill from bars: selects only that value in the matching multiselect
+  const map = { dept:'ms-hc-dept', salon:'ms-hc-salon', brand:'ms-hc-brand', city:'ms-hc-city' };
+  const id = map[field];
+  if (!id) return;
+  document.querySelectorAll(`#${id} .ms-item input`).forEach(cb => { cb.checked = (cb.value === value); });
+  msUpdate(id);
+  renderHeadcountDashboard();
+}
+
+function hcSetFilterDept(value) { hcSetFilter('dept', value); }
+
+function renderHeadcountDashboard() {
+  if (!hcData.length) return;
+  const rows = filterHeadcount();
+  const total = rows.length;
+  const body = document.getElementById('hc-body');
+
+  if (!total) {
+    const activeCount = hcData.filter(r => (r.status||'').toLowerCase() === 'active').length;
+    if (activeCount === 0) {
+      // Diagnostic: show actual header row + first parsed row so column mapping can be fixed
+      const sample = hcData[0];
+      const sampleHtml = Object.entries(sample).map(([k,v]) =>
+        `<span style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:4px;padding:2px 8px;font-size:11px;font-family:monospace;margin:2px;display:inline-block">${k}: "${esc(String(v))}"</span>`).join('');
+      const headerHtml = hcRawHeader.map((h,i) => {
+        const colLetter = String.fromCharCode(65+i);
+        return `<span style="background:#dcfce7;border:1px solid #86efac;border-radius:4px;padding:2px 8px;font-size:11px;font-family:monospace;margin:2px;display:inline-block">${colLetter}[${i}]: "${esc(h)}"</span>`;
+      }).join('');
+      body.innerHTML = `
+        <div style="padding:20px 24px;max-width:800px;margin:0 auto">
+          <div style="background:#fff8e1;border:1px solid #fcd34d;border-radius:10px;padding:16px 20px;margin-bottom:16px">
+            <strong style="font-size:13px;color:#92400e">⚠ ${hcData.length.toLocaleString()} rows loaded, but 0 matched status "Active". Column mapping is likely off.</strong>
+          </div>
+          <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:10px;padding:16px 20px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:10px">📑 Actual header row from your sheet (column letter / index / name):</div>
+            <div>${headerHtml || '<em style="color:var(--gray-400)">no header row found</em>'}</div>
+          </div>
+          <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:10px;padding:16px 20px;margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--gray-600);margin-bottom:10px">🔬 First row as currently parsed (mapping is wrong — for reference only):</div>
+            <div>${sampleHtml}</div>
+          </div>
+        </div>`;
+      return;
+    }
+    body.innerHTML = '<div class="sd-no-data"><div class="eico">🔍</div><p>No active employees match current filters.</p></div>';
+    return;
+  }
+
+  const byDept   = hcGroupCount(rows, 'dept');
+  const byDesig  = hcGroupCount(rows, 'desig').slice(0, 12);
+  const byGender = hcGroupCount(rows, 'gender');
+  const bySalon  = hcGroupCount(rows, 'salon');
+  const byBrand  = hcGroupCount(rows, 'brand');
+  const byCity   = hcGroupCount(rows, 'city');
+
+  const maleCount   = rows.filter(r => /^m/i.test(r.gender)).length;
+  const femaleCount = rows.filter(r => /^f/i.test(r.gender)).length;
+  const avgTenure   = (rows.reduce((s,r) => s + (r.tenure||0), 0) / total).toFixed(1);
+  const newJoiners90 = rows.filter(r => (r.tenure||0) <= 0.25).length; // ~ joined within last 3 months (tenure in years)
+
+  const cards = `
+    <div class="hc-cards">
+      <div class="hc-card t-green"><div class="hc-val">${total.toLocaleString()}</div><div class="hc-lbl">Active Headcount</div></div>
+      <div class="hc-card t-blue"><div class="hc-val">${byBrand.length}</div><div class="hc-lbl">Brands</div><div class="hc-sub">${byBrand.map(b=>b[0]).join(' · ')}</div></div>
+      <div class="hc-card t-purple"><div class="hc-val">${bySalon.length}</div><div class="hc-lbl">Salons / Centers</div></div>
+      <div class="hc-card t-amber"><div class="hc-val">${byDept.length}</div><div class="hc-lbl">Departments</div></div>
+      <div class="hc-card t-pink"><div class="hc-val">${maleCount} / ${femaleCount}</div><div class="hc-lbl">Male / Female</div></div>
+      <div class="hc-card t-red"><div class="hc-val">${avgTenure} yr</div><div class="hc-lbl">Avg. Tenure</div><div class="hc-sub">${newJoiners90} joined last 90 days</div></div>
+    </div>`;
+
+  const salonTableRows = bySalon.map(([salon,count]) => {
+    const salonRows = rows.filter(r => r.salon === salon);
+    const brand = salonRows[0]?.brand || '';
+    const city  = salonRows[0]?.city  || '';
+    const m = salonRows.filter(r => /^m/i.test(r.gender)).length;
+    const f = salonRows.filter(r => /^f/i.test(r.gender)).length;
+    const avgT = (salonRows.reduce((s,r)=>s+(r.tenure||0),0)/salonRows.length).toFixed(1);
+    return `<tr>
+      <td>${esc(salon)}</td>
+      <td><span class="hc-pill-mini" style="background:var(--blue-light);color:var(--blue)">${esc(brand)}</span></td>
+      <td>${esc(city)}</td>
+      <td class="num">${count}</td>
+      <td class="num">${m}</td>
+      <td class="num">${f}</td>
+      <td class="num">${avgT}</td>
+    </tr>`;
+  }).join('');
+
+  const grids = `
+    <div class="hc-grid">
+      <div class="hc-panel">
+        <div class="hc-panel-head"><span>🏢 By Department</span><span class="hc-count">${byDept.length} depts</span></div>
+        <div class="hc-panel-body">${hcBarRows(byDept, total, null, 'hcSetFilterDept')}</div>
+      </div>
+      <div class="hc-panel">
+        <div class="hc-panel-head"><span>🚻 Gender Split</span><span class="hc-count">${total} total</span></div>
+        <div class="hc-panel-body"><div class="hc-donut-wrap">${hcDonutSVG(byGender,total)}<div class="hc-legend">${hcLegend(byGender,total)}</div></div></div>
+      </div>
+      <div class="hc-panel">
+        <div class="hc-panel-head"><span>🎯 By Designation</span><span class="hc-count">top ${byDesig.length}</span></div>
+        <div class="hc-panel-body">${hcBarRows(byDesig, total)}</div>
+      </div>
+      <div class="hc-panel">
+        <div class="hc-panel-head"><span>📍 By City</span><span class="hc-count">${byCity.length} cities</span></div>
+        <div class="hc-panel-body">${hcBarRows(byCity, total)}</div>
+      </div>
+    </div>
+
+    <div class="hc-panel">
+      <div class="hc-panel-head"><span>🏬 Headcount by Salon / Center</span><span class="hc-count">${bySalon.length} salons</span></div>
+      <div class="hc-table-wrap"><table class="hc-table">
+        <thead><tr>
+          <th onclick="sortSdTable(this)">Salon</th>
+          <th onclick="sortSdTable(this)">Brand</th>
+          <th onclick="sortSdTable(this)">City</th>
+          <th onclick="sortSdTable(this)">Headcount</th>
+          <th onclick="sortSdTable(this)">Male</th>
+          <th onclick="sortSdTable(this)">Female</th>
+          <th onclick="sortSdTable(this)">Avg Tenure (yr)</th>
+        </tr></thead>
+        <tbody>${salonTableRows}</tbody>
+      </table></div>
+    </div>`;
+
+  body.innerHTML = cards + grids;
+}
+
+
+</script>
+</body>
+</html>
